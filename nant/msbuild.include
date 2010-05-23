@@ -145,7 +145,7 @@
         </exec>
       </if>
       <if test="${not (msbuild.version == 'net-4.0')}">
-        <if test="${msbuild.version == 'net-3.5')}">
+        <if test="${msbuild.version == 'net-3.5'}">
           <property name="teamcity_dotnet_use_msbuild_v35" value="true" />
         </if>
 
