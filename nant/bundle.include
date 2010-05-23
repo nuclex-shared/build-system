@@ -12,6 +12,9 @@
 
   <!--
     Erases all binaries and intermediate files from the projects in the bundle
+    
+    Inputs:
+      bundle.platform   Platform of which to clean the build outputs
   -->
   <target name="bundle-clean">
 
@@ -124,6 +127,58 @@
 
     </foreach>
 
+  </target>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <!--
+    Packages the build output files of all projects
+    
+    Inputs:
+      bundle.platform       Platform to package (decides which .platform.cv to use)
+      bundle.configuration  Build configuration ("Debug" or "Release")
+      bundle.package        Name of the folder that will receive the output files
+  -->
+  <target name="bundle-package">
+  
+    <fail
+      if="${directory::exists(bundle.package) or file::exists(bundle.package)}"
+      message="Package target directory '${bundle.package}' already exists"
+    />
+    
+    <mkdir dir="${bundle.package}" />
+
+    <foreach
+      item="Line" in="${bundle.platform}.platform.csv" delim=","
+      property="temp.directory,temp.platform,temp.msbuildfile,temp.output"
+    >
+
+      <if test="${not string::starts-with(temp.directory, '#')}">
+
+        <property
+          name="temp.expandedoutput"
+          value="${string::replace(temp.output, '%build.configuration%', build.configuration)}"
+        />
+        <property
+          name="temp.outputdirectory"
+          value="${temp.directory}/${temp.expandedoutput}"
+        />
+      
+        <echo message="Packaging ${temp.outputdirectory}" />
+        
+        <copy todir="${bundle.package}">
+          <fileset basedir="${temp.outputdirectory}">
+            <include name="**/*" />
+            <exclude name="*.pdb" /><!-- Debugging without sources is not possible -->
+            <exclude name="*.idb" /><!-- This is only useful if we modify sources -->
+            <exclude name="*.exp" /><!-- Nobody uses these anymore -->
+          </fileset>
+        </copy>
+      
+      </if>
+      
+    </foreach>
+  
   </target>
 
   <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
