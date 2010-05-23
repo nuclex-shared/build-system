@@ -76,11 +76,13 @@
     <if test="${property::exists('teamcity.dotnet.nunitlauncher2.0')}">
       <echo message="Using NUnit from TeamCity" />
     </if>
-    <if test="${property::exists('nunit.path')}">
-      <echo message="NUnit located in ${nunit.path}" />
-    </if>
-    <if test="${not property::exists('nunit.path')}">
-      <echo message="NUnit not found. Use -D:nunit.path=... to set path" />
+    <if test="${not property::exists('teamcity.dotnet.nunitlauncher2.0')}">
+      <if test="${property::exists('nunit.path')}">
+        <echo message="NUnit located in ${nunit.path}" />
+      </if>
+      <if test="${not property::exists('nunit.path')}">
+        <echo message="NUnit not found. Use -D:nunit.path=... to set path" />
+      </if>
     </if>
 
   </target>

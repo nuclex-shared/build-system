@@ -41,11 +41,13 @@
     <if test="${property::exists('teamcity.dotnet.nunitlauncher2.0')}">
       <echo message="Using MSBuild from TeamCity" />
     </if>
-    <if test="${property::exists('msbuild.path')}">
-      <echo message="MSBuild located in ${msbuild.path}" />
-    </if>
-    <if test="${not property::exists('msbuild.path')}">
-      <echo message="MSBuild not found. Use -D:msbuild.path=... to set path" />
+    <if test="${not property::exists('teamcity.dotnet.nunitlauncher2.0')}">
+      <if test="${property::exists('msbuild.path')}">
+        <echo message="MSBuild located in ${msbuild.path}" />
+      </if>
+      <if test="${not property::exists('msbuild.path')}">
+        <echo message="MSBuild not found. Use -D:msbuild.path=... to set path" />
+      </if>
     </if>
 
   </target>
