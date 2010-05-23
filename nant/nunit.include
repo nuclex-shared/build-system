@@ -10,9 +10,11 @@
 
   <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
 
+  <!--
+      Locates NUnit and initializes the nunit.path property
+  -->
   <target
     name="locate-nunit"
-    description="Locates NUnit and initializes nunit.path property"
     unless="${property::exists('nunit.path')}"
   >
 
@@ -59,11 +61,13 @@
     </if>
     
     <!--
-      Newer NUnit version have a net-2.0 subfolder the binaries are stored in.
+      Newer NUnit versions have a net-2.0 subfolder the binaries are stored in.
     -->
-    <property name="temp" value="${path::combine(nunit.path, 'net-2.0')}" />
-    <if test="${directory::exists(temp)}">
-      <property name="nunit.path" value="${temp}" />
+    <if test="${property::exists('nunit.path')}">
+      <property name="temp" value="${path::combine(nunit.path, 'net-2.0')}" />
+      <if test="${directory::exists(temp)}">
+        <property name="nunit.path" value="${temp}" />
+      </if>
     </if>
 
     <!--
@@ -133,7 +137,7 @@
     Inputs:
       nunit.testassembly    Assembly that will be tested with NUnit
   -->
-  <target name="nunit" depends="require-nunit" description="Runs a unit test">
+  <target name="nunit" depends="require-nunit">
 
     <!--
       If we're being run by TeamCity, use their NUnit launcher
@@ -192,7 +196,13 @@
 
   <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
 
-  <target name="nunit-x86" depends="require-nunit-x86" description="Runs a unit test">
+  <!--
+    Runs unit tests in a single assembly
+
+    Inputs:
+      nunit.testassembly    Assembly that will be tested with NUnit
+  -->
+  <target name="nunit-x86" depends="require-nunit-x86">
 
     <!--
       If we're being run by TeamCity, use their NUnit launcher
