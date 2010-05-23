@@ -144,7 +144,7 @@
       <if test="${framework::get-target-framework() == 'net-4.0'}">
         <property name="teamcity.dotnet.nant.nunit2.platformVersion" value="v4.0" />
       </if>
-      <if test="${not framework::get-target-framework() == 'net-4.0'}">
+      <if test="${not (framework::get-target-framework() == 'net-4.0')}">
         <property name="teamcity.dotnet.nant.nunit2.platformVersion" value="v2.0" />
       </if>
 
@@ -203,7 +203,7 @@
       <if test="${framework::get-target-framework() == 'net-4.0'}">
         <property name="teamcity.dotnet.nant.nunit2.platformVersion" value="v4.0" />
       </if>
-      <if test="${not framework::get-target-framework() == 'net-4.0'}">
+      <if test="${not (framework::get-target-framework() == 'net-4.0')}">
         <property name="teamcity.dotnet.nant.nunit2.platformVersion" value="v2.0" />
       </if>
 
