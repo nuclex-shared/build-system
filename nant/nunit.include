@@ -189,6 +189,7 @@
 
         <arg file="${nunit.testassembly}" />
         <arg value="/nologo" />
+        <arg value="/nodots" />
         <arg value="/noshadow" />
       </exec>
 
@@ -248,9 +249,18 @@
         failonerror="false"
         managed="true"
       >
+        <environment>
+          <variable
+            name="COMPLUS_Version"
+            value="v4.0.30319"
+            if="${framework::get-target-framework() == 'net-4.0'}"
+          />
+        </environment>
+
         <arg file="${nunit.testassembly}" />
         <arg value="/nologo" />
         <arg value="/noshadow" />
+        <arg value="/nodots" />
       </exec>
 
     </if>

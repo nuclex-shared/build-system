@@ -99,30 +99,36 @@
     -->
     <if test="${property::exists('teamcity.dotnet.nunitlauncher2.0')}">
 
-      <!-- Use MSBuild 3.5 for .NET 2.0 builds launched by TeamCity -->
-      <if test="${temp == 'net-2.0'}">
+      <if test="${framework::exists('net-3.5')}">
         <property name="teamcity_dotnet_use_msbuild_v35" value="true" />
       </if>
-      <if test="${temp == 'net-3.5'}">
-        <property name="teamcity_dotnet_use_msbuild_v35" value="true" />
+      <if test="${framework::exists('net-4.0')}">
+        <property name="teamcity_dotnet_use_msbuild_v40" value="true" />
       </if>
 
       <!--
         Run the TeamCity MSBuild task
       -->
+      <!-- Currently, TeamCity messes up with .NET 4.0 projects containing resources
       <msbuild
         project="${msbuild.project}"
         target="Build"
       >
         <arg value="/property:Configuration=${msbuild.configuration}" />
-        <!--
-        <arg value="/property:TargetFrameworkVersion=v2.0" if="${temp == 'net-2.0'}" />
-        <arg value="/property:TargetFrameworkVersion=v3.5" if="${temp == 'net-3.5'}" />
-        <arg value="/property:TargetFrameworkVersion=v4.0" if="${temp == 'net-4.0'}" />
-        -->
         <arg value="/property:Platform=${msbuild.platform}" />
         <arg value="/property:UNITTEST=true" if="${msbuild.unittest == 'true'}" />
       </msbuild>
+      -->
+      <exec
+        program="${msbuild.path}"
+        failonerror="true"
+        managed="true"
+      >
+        <arg file="${msbuild.project}" />
+        <arg value="/property:Configuration=${msbuild.configuration}" />
+        <arg value="/property:Platform=${msbuild.platform}" />
+        <arg value="/property:UNITTEST=true" if="${msbuild.unittest == 'true'}" />
+      </exec>
 
     </if>
 
@@ -138,14 +144,14 @@
       >
         <arg file="${msbuild.project}" />
         <arg value="/property:Configuration=${msbuild.configuration}" />
+        <arg value="/property:Platform=${msbuild.platform}" />
+        <arg value="/property:UNITTEST=true" if="${msbuild.unittest == 'true'}" />
+      </exec>
         <!--
         <arg value="/property:TargetFrameworkVersion=v2.0" if="${temp == 'net-2.0'}" />
         <arg value="/property:TargetFrameworkVersion=v3.5" if="${temp == 'net-3.5'}" />
         <arg value="/property:TargetFrameworkVersion=v4.0" if="${temp == 'net-4.0'}" />
         -->
-        <arg value="/property:Platform=${msbuild.platform}" />
-        <arg value="/property:UNITTEST=true" if="${msbuild.unittest == 'true'}" />
-      </exec>
 
     </if>
 
