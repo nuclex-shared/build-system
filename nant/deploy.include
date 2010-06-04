@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<project
+  xmlns="http://nant.sf.net/schemas/nant-0.85.win32.net-1.0.xsd"
+  name="Deploy"
+>
+
+  <include buildfile="subversion.include" />
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <!--
+    Deploys a set of files to a subversion repository
+    
+    Inputs:
+      deploy.url            Repository url the files will be deployed to
+      deploy.directory      Directory containing the files that will be deployed
+      deploy.username       User name as whom a working copy will be checked out
+      deploy.password       Password that will be used for logging into the repository
+  -->
+  <target name="deploy-subversion">
+  
+    <if test="${property::exists('deploy.username')}">
+      <property name="subversion.username" value="${deploy.username}" />
+      <property name="subversion.password" value="${deploy.password}" />
+    </if>
+
+    <property name="temp.wcroot" value="${path::get-temp-file-name()}" />
+    <property name="temp.wcrootdir" value="${path::get-full-path(temp.wcroot) + '.dir'}" />
+
+    <!--
+      Check out a working copy from the repository url
+    -->
+    <property name="subversion.url" value="${deploy.url}" />
+    <property name="subversion.target" value="${temp.wcroot}.dir" />
+    <call target="subversion-checkout" />
+
+    <!-- TEMP: Remove this again! -->
+    <mkdir dir="${path::combine(temp.wcrootdir, 'tags/newdirectory')}" />
+    <copy file="e:/nuclex.snk" todir="${path::combine(temp.wcrootdir, 'tags/newdirectory')}" />
+
+    <!--
+      Remove all directories from the working copy that don't exist in the source directory
+    -->
+    <foreach item="Folder" property="temp.wcdirectory">
+      <in>
+        <items>
+          <include name="${temp.wcrootdir}/**" />
+          <exclude name="${temp.wcrootdir}/**/.svn/**" />
+        </items>
+      </in>
+      <do>
+        <echo message="WC: ${temp.wcdirectory}" />
+<!--
+        <property
+          name="temp.wcabsolute"
+          value="${path::get-full-path(temp.wcdirectory)}"
+        />
+        <property
+          name="temp.wcrelative"
+          value="${string::replace(temp.wcabsolute, temp.wcrootdir, '')}"
+        />
+        
+        <property name="temp.srcabsolute" value="${deploy.directory}${temp.wcrelative}" />
+        <if test="${not directory::exists(temp.srcabsolute)}">
+          <echo message="Deleting ${temp.wcabsolute}" />
+        </if>
+-->
+      </do>
+    </foreach>
+
+    <!--
+      Add all directories to the working copy that only exist in the source directory
+    -->
+    <foreach item="Folder" property="temp.srcdirectory">
+      <in>
+        <items>
+          <include name="${deploy.directory}/**" />
+        </items>
+      </in>
+      <do>
+        <echo message="SRC: ${temp.srcdirectory}" />
+<!--      
+      <property
+        name="temp.srcabsolute"
+        value="${path::get-full-path(temp.srcdirectory)}"
+      />
+      <property
+        name="temp.srcrelative"
+        value="${string::replace(temp.srcabsolute, path::get-full-path(deploy.directory), '')}"
+      />
+      
+      <property name="temp.wcabsolute" value="${temp.wcroot}${temp.srcrelative}" />
+      <if test="${not directory::exists(temp.srcabsolute)}">
+        <echo message="${temp.wcabsolute}" />
+      </if>
+-->
+      </do>
+    </foreach>
+
+    <delete dir="${temp.wcrootdir}" />
+    <delete file="${temp.wcroot}" />
+
+  </target>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+</project>

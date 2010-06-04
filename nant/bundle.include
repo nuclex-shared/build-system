@@ -7,7 +7,6 @@
 
   <include buildfile="msbuild.include" />
   <include buildfile="nunit.include" />
-  <include buildfile="subversion.include" />
 
   <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
 

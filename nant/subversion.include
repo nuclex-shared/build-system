@@ -56,10 +56,10 @@
       Try to locate Subversion in its default path on x64 systems
     -->
     <if test="${not property::exists('subversion.path')}">
-      <if test="${environment::variable-exists('ProgramFiles(x86)')}">
+      <if test="${environment::variable-exists('ProgramW6432')}">
         <foreach
           item="Folder"
-          in="${environment::get-variable('ProgramFiles(x86)')}"
+          in="${environment::get-variable('ProgramW6432')}"
           property="temp"
         >
           <property
