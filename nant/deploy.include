@@ -35,12 +35,12 @@
     <property name="subversion.target" value="${temp.wcroot}.dir" />
     <call target="subversion-checkout" />
 
-    <!-- TEMP: Remove this again! -->
-    <mkdir dir="${path::combine(temp.wcrootdir, 'tags/newdirectory')}" />
-    <copy file="e:/nuclex.snk" todir="${path::combine(temp.wcrootdir, 'tags/newdirectory')}" />
+    <!-- TEMP: Testing code, remove this again! -->
+    <mkdir dir="${path::combine(temp.wcrootdir, 'tags/new1/new2')}" />
+    <copy file="e:/nuclex.snk" todir="${path::combine(temp.wcrootdir, 'tags/new1/new2')}" />
 
     <!--
-      Remove all directories from the working copy that don't exist in the source directory
+      Remove all directories from the working copy that don't exist in the source
     -->
     <foreach item="Folder" property="temp.wcdirectory">
       <in>
@@ -50,8 +50,6 @@
         </items>
       </in>
       <do>
-        <echo message="WC: ${temp.wcdirectory}" />
-<!--
         <property
           name="temp.wcabsolute"
           value="${path::get-full-path(temp.wcdirectory)}"
@@ -60,17 +58,43 @@
           name="temp.wcrelative"
           value="${string::replace(temp.wcabsolute, temp.wcrootdir, '')}"
         />
-        
+
         <property name="temp.srcabsolute" value="${deploy.directory}${temp.wcrelative}" />
         <if test="${not directory::exists(temp.srcabsolute)}">
-          <echo message="Deleting ${temp.wcabsolute}" />
+          <echo message="WC: Delete directory ${temp.wcrelative}" />
         </if>
--->
       </do>
     </foreach>
-
+    
     <!--
-      Add all directories to the working copy that only exist in the source directory
+      Remove all files from the working copy that don't exist in the source
+    -->
+    <foreach item="File" property="temp.wcfile">
+      <in>
+        <items>
+          <include name="${temp.wcrootdir}/**/*" />
+          <exclude name="${temp.wcrootdir}/**/.svn/**/*" />
+        </items>
+      </in>
+      <do>
+        <property
+          name="temp.wcabsolute"
+          value="${path::get-full-path(temp.wcfile)}"
+        />
+        <property
+          name="temp.wcrelative"
+          value="${string::replace(temp.wcabsolute, temp.wcrootdir, '')}"
+        />
+
+        <property name="temp.srcabsolute" value="${deploy.directory}${temp.wcrelative}" />
+        <if test="${not directory::exists(temp.srcabsolute)}">
+          <echo message="WC: Delete file ${temp.wcrelative}" />
+        </if>
+      </do>
+    </foreach>
+    
+    <!--
+      Add all directories to the working copy that only exist in the source
     -->
     <foreach item="Folder" property="temp.srcdirectory">
       <in>
@@ -79,22 +103,45 @@
         </items>
       </in>
       <do>
-        <echo message="SRC: ${temp.srcdirectory}" />
-<!--      
-      <property
-        name="temp.srcabsolute"
-        value="${path::get-full-path(temp.srcdirectory)}"
-      />
-      <property
-        name="temp.srcrelative"
-        value="${string::replace(temp.srcabsolute, path::get-full-path(deploy.directory), '')}"
-      />
-      
-      <property name="temp.wcabsolute" value="${temp.wcroot}${temp.srcrelative}" />
-      <if test="${not directory::exists(temp.srcabsolute)}">
-        <echo message="${temp.wcabsolute}" />
-      </if>
--->
+
+        <!--
+          For your own sanity, try not to analyze the following piece of code.
+          If uses a target and global variables to go down a path directory-wise by
+          using the path::get-directory-name() method so they can be added in order.
+        -->
+        <property name="temp.base" value="${path::get-full-path(deploy.directory)}" />
+        <property name="temp.start" value="${path::get-full-path(temp.srcdirectory)}" />
+        <if test="${not (temp.start == temp.base)}">
+          <property name="temp.outer" value="${temp.start}" />
+          <call target="deploy-subversion-helper" />
+        </if>
+
+      </do>
+    </foreach>
+
+    <!--
+      Add all files to the working copy that only exist in the source
+    -->
+    <foreach item="File" property="temp.srcfile">
+      <in>
+        <items>
+          <include name="${deploy.directory}/**/*" />
+        </items>
+      </in>
+      <do>
+        <property
+          name="temp.srcabsolute"
+          value="${path::get-full-path(temp.srcfile)}"
+        />
+        <property
+          name="temp.srcrelative"
+          value="${string::replace(temp.srcabsolute, path::get-full-path(deploy.directory), '')}"
+        />
+
+        <property name="temp.wcabsolute" value="${temp.wcrootdir}${temp.srcrelative}" />
+        <if test="${not directory::exists(temp.wcabsolute)}">
+          <echo message="WC: Add file ${temp.srcrelative}" />
+        </if>
       </do>
     </foreach>
 
@@ -104,5 +151,38 @@
   </target>
 
   <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <!--
+    Adds the directories of a path (possibly containing multiple unadded directories)
+    from left to right to the working copy
+    
+    Inputs:
+      temp.base             Base directory above which the recursion should not proceed
+      temp.start            Directory which should be added to the working copy
+      temp.outer            Needs to have the same value as temp.start
+      temp.wcroot           Directory containing the subversion working copy
+      deploy.directory      Directory which contains the files that will be deployed
+  -->
+  <target name="deploy-subversion-helper">
+    <if test="${temp.outer == temp.base}">
+      <property name="temp.base" value="${temp.prev}" />
+      <property name="temp.outer" value="${temp.start}" />
+
+      <property
+        name="temp.srcrelative"
+        value="${string::replace(temp.base, path::get-full-path(deploy.directory), '')}"
+      />
+      
+      <property name="temp.wcabsolute" value="${temp.wcrootdir}${temp.srcrelative}" />
+      <if test="${not directory::exists(temp.wcabsolute)}">
+        <echo message="WC: Add directory ${temp.srcrelative}" />
+      </if>
+    </if>
+    <if test="${not (temp.outer == temp.base)}">
+      <property name="temp.prev" value="${temp.outer}" />
+      <property name="temp.outer" value="${path::get-directory-name(temp.outer)}" />
+      <call target="deploy-subversion-helper" />
+    </if>
+  </target>
 
 </project>
