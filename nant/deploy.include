@@ -151,12 +151,12 @@
     -->
     <property name="subversion.target" value="${temp.wcrootdir}" />
     <property name="subversion.message" value="${deploy.commitmessage}" />
-    <!-- <call target="subversion-commit" /> -->
+    <call target="subversion-commit" />
 
     <!--
       Clean up the mess we've made
     -->
-    <!-- <delete dir="${temp.wcrootdir}" /> -->
+    <delete dir="${temp.wcrootdir}" />
     <delete file="${temp.wcroot}" />
 
   </target>
