@@ -11,7 +11,7 @@
 
   <!--
     Deploys a set of files to a subversion repository
-    
+
     Inputs:
       deploy.url            Repository url the files will be deployed to
       deploy.directory      Directory containing the files that will be deployed
@@ -20,7 +20,11 @@
       deploy.commitmessage  Message to use when committing the changes to the repository
   -->
   <target name="deploy-subversion">
-  
+
+    <echo message="===================================================================" />
+    <echo message="Deploying to ${deploy.url}" />
+    <echo message="===================================================================" />
+
     <if test="${property::exists('deploy.username')}">
       <property name="subversion.username" value="${deploy.username}" />
       <property name="subversion.password" value="${deploy.password}" />
@@ -63,7 +67,7 @@
         </if>
       </do>
     </foreach>
-    
+
     <!--
       Remove all files from the working copy that don't exist in the source
     -->
@@ -91,7 +95,7 @@
         </if>
       </do>
     </foreach>
-    
+
     <!--
       Add all directories to the working copy that only exist in the source
     -->
@@ -166,9 +170,9 @@
   <!--
     Adds the directories of a path (possibly containing multiple unadded directories)
     from left to right to the working copy.
-    
+
     Warning: risk of brain meltdown. Avoid analyzing this code.
-    
+
     Inputs:
       temp.base             Base directory above which the recursion should not proceed
       temp.start            Directory which should be added to the working copy
@@ -185,7 +189,7 @@
         name="temp.srcrelative"
         value="${string::replace(temp.base, path::get-full-path(deploy.directory), '')}"
       />
-      
+
       <property name="temp.wcabsolute" value="${temp.wcrootdir}${temp.srcrelative}" />
       <if test="${not directory::exists(temp.wcabsolute)}">
         <property name="subversion.directory" value="${temp.wcabsolute}" />
