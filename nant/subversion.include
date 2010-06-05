@@ -115,13 +115,31 @@
     Adds files to a working copy
 
     Inputs:
-      subversion.filename   Name of the file(s) that will be added
+      subversion.filename   Name of the file that will be added
   -->
   <target name="subversion-add" depends="require-subversion">
 
     <property
       name="subversion.commandline"
-      value="add ${subversion.filename}"
+      value="add &quot;${subversion.filename}&quot;"
+    />
+    <call target="subversion" />
+
+  </target>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <!--
+    Creates a directory in a working copy
+
+    Inputs:
+      subversion.directory  Name of the directory that will be added
+  -->
+  <target name="subversion-mkdir" depends="require-subversion">
+
+    <property
+      name="subversion.commandline"
+      value="mkdir &quot;${subversion.directory}&quot;"
     />
     <call target="subversion" />
 
@@ -133,13 +151,13 @@
     Removes files from a working copy
 
     Inputs:
-      subversion.filename   Name of the file(s) that will be removed
+      subversion.filename   Name of the file that will be removed
   -->
   <target name="subversion-remove" depends="require-subversion">
 
     <property
       name="subversion.commandline"
-      value="remove ${subversion.filename}"
+      value="remove &quot;${subversion.filename}&quot; --force"
     />
     <call target="subversion" />
 
@@ -156,10 +174,9 @@
   -->
   <target name="subversion-commit" depends="require-subversion">
 
-
     <property
       name="subversion.commandline"
-      value="commit ${subversion.target} --message &quot;${subversion.message}&quot;"
+      value="commit &quot;${subversion.target}&quot; --message &quot;${subversion.message}&quot;"
     />
     <call target="subversion" />
 
