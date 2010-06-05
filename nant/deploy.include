@@ -85,7 +85,7 @@
         />
 
         <property name="temp.srcabsolute" value="${deploy.directory}${temp.wcrelative}" />
-        <if test="${not directory::exists(temp.srcabsolute)}">
+        <if test="${not file::exists(temp.srcabsolute)}">
           <property name="subversion.filename" value="${temp.wcabsolute}" />
           <call target="subversion-remove" />
         </if>
@@ -138,7 +138,7 @@
         />
 
         <property name="temp.wcabsolute" value="${temp.wcrootdir}${temp.srcrelative}" />
-        <if test="${not directory::exists(temp.wcabsolute)}">
+        <if test="${not file::exists(temp.wcabsolute)}">
           <copy file="${temp.srcabsolute}" tofile="${temp.wcabsolute}" />
           <property name="subversion.filename" value="${temp.wcabsolute}" />
           <call target="subversion-add" />
@@ -151,12 +151,12 @@
     -->
     <property name="subversion.target" value="${temp.wcrootdir}" />
     <property name="subversion.message" value="${deploy.commitmessage}" />
-    <call target="subversion-commit" />
+    <!-- <call target="subversion-commit" /> -->
 
     <!--
       Clean up the mess we've made
     -->
-    <delete dir="${temp.wcrootdir}" />
+    <!-- <delete dir="${temp.wcrootdir}" /> -->
     <delete file="${temp.wcroot}" />
 
   </target>
