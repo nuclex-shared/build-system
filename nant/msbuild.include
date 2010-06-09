@@ -156,7 +156,7 @@
           >
             <arg file="${msbuild.project}" />
             <arg value="/property:Configuration=${msbuild.configuration}" />
-            <arg value="/property:Platform=${msbuild.platform}" />
+            <!-- <arg value="/property:Platform=${msbuild.platform}" /> -->
             <arg value="/property:UNITTEST=true" if="${msbuild.unittest == 'true'}" />
           </exec>
         </if>
@@ -170,7 +170,7 @@
             target="Build"
           >
             <arg value="/property:Configuration=${msbuild.configuration}" />
-            <arg value="/property:Platform=${msbuild.platform}" />
+            <!-- <arg value="/property:Platform=${msbuild.platform}" /> -->
             <arg value="/property:UNITTEST=true" if="${msbuild.unittest == 'true'}" />
           </msbuild>
         </if>
@@ -189,7 +189,7 @@
         >
           <arg file="${msbuild.project}" />
           <arg value="/property:Configuration=${msbuild.configuration}" />
-          <arg value="/property:Platform=${msbuild.platform}" />
+          <!-- <arg value="/property:Platform=${msbuild.platform}" /> -->
           <arg value="/property:UNITTEST=true" if="${msbuild.unittest == 'true'}" />
         </exec>
         <!--
