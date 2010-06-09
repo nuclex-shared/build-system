@@ -124,63 +124,64 @@
 
     <property name="temp" value="${framework::get-target-framework()}" />
 
-    <!--
-      If we're being run by TeamCity, use their NUnit launcher
-    -->
-    <if test="${property::exists('teamcity.dotnet.nunitlauncher2.0')}">
+    <if test="${path::get-extension(msbuild.project) == '.vcproj'}">
+      <property
+        name="vcbuild.binary"
+        value="${environment::get-variable('VS90COMNTOOLS')}../../VC/VCPackages/VCBuild.exe"
+      />
+      <exec
+        program="${vcbuild.binary}"
+      >
+        <arg value="/rebuild" />
+        <arg value="${msbuild.project}" />
+        <arg value="${msbuild.configuration}" />
+      </exec>
+    </if>
+    
+    <if test="${not (path::get-extension(msbuild.project) == '.vcproj')}">
 
       <!--
-        Currently, TeamCity messes up with .NET 4.0 projects containing resources
+        If we're being run by TeamCity, use their NUnit launcher
       -->
-      <if test="${msbuild.version == 'net-4.0'}">
-        <exec
-          program="${msbuild.path}"
-          failonerror="true"
-          managed="true"
-        >
-          <arg file="${msbuild.project}" />
-          <arg value="/property:Configuration=${msbuild.configuration}" />
-          <arg value="/property:Platform=${msbuild.platform}" />
-          <arg value="/property:UNITTEST=true" if="${msbuild.unittest == 'true'}" />
-        </exec>
-      </if>
-      <if test="${not (msbuild.version == 'net-4.0')}">
-        <if test="${msbuild.version == 'net-3.5'}">
-          <property name="teamcity_dotnet_use_msbuild_v35" value="true" />
+      <if test="${property::exists('teamcity.dotnet.nunitlauncher2.0')}">
+
+        <!--
+          Currently, TeamCity messes up with .NET 4.0 projects containing resources
+        -->
+        <if test="${msbuild.version == 'net-4.0'}">
+          <exec
+            program="${msbuild.path}"
+            failonerror="true"
+            managed="true"
+          >
+            <arg file="${msbuild.project}" />
+            <arg value="/property:Configuration=${msbuild.configuration}" />
+            <arg value="/property:Platform=${msbuild.platform}" />
+            <arg value="/property:UNITTEST=true" if="${msbuild.unittest == 'true'}" />
+          </exec>
+        </if>
+        <if test="${not (msbuild.version == 'net-4.0')}">
+          <if test="${msbuild.version == 'net-3.5'}">
+            <property name="teamcity_dotnet_use_msbuild_v35" value="true" />
+          </if>
+
+          <msbuild
+            project="${msbuild.project}"
+            target="Build"
+          >
+            <arg value="/property:Configuration=${msbuild.configuration}" />
+            <arg value="/property:Platform=${msbuild.platform}" />
+            <arg value="/property:UNITTEST=true" if="${msbuild.unittest == 'true'}" />
+          </msbuild>
         </if>
 
-        <msbuild
-          project="${msbuild.project}"
-          target="Build"
-        >
-          <arg value="/property:Configuration=${msbuild.configuration}" />
-          <arg value="/property:Platform=${msbuild.platform}" />
-          <arg value="/property:UNITTEST=true" if="${msbuild.unittest == 'true'}" />
-        </msbuild>
       </if>
 
-    </if>
+      <!--
+        If we're not being run by TeamCity, start MSBuild directly
+      -->
+      <if test="${not property::exists('teamcity.dotnet.nunitlauncher2.0')}">
 
-    <!--
-      If we're not being run by TeamCity, start MSBuild directly
-    -->
-    <if test="${not property::exists('teamcity.dotnet.nunitlauncher2.0')}">
-
-      <if test="${path::get-extension(msbuild.project) == '.vcproj'}">
-        <property
-          name="vcbuild.binary"
-          value="${environment::get-variable('VS90COMNTOOLS')}../../VC/VCPackages/VCBuild.exe"
-        />
-        <exec
-          program="${vcbuild.binary}"
-        >
-          <arg value="/rebuild" />
-          <arg value="${msbuild.project}" />
-          <arg value="${msbuild.configuration}" />
-        </exec>
-      </if>
-      
-      <if test="${not (path::get-extension(msbuild.project) == '.vcproj')}">
         <exec
           program="${msbuild.path}"
           failonerror="true"
@@ -196,6 +197,7 @@
         <arg value="/property:TargetFrameworkVersion=v3.5" if="${temp == 'net-3.5'}" />
         <arg value="/property:TargetFrameworkVersion=v4.0" if="${temp == 'net-4.0'}" />
         -->
+
       </if>
 
     </if>
