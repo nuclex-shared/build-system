@@ -141,6 +141,11 @@
   -->
   <target name="nunit" depends="require-nunit">
 
+    <property name="temp" value="${path::get-file-name(nunit.testassembly)}" />
+    <echo message="===================================================================" />
+    <echo message="Running tests in ${temp}" />
+    <echo message="===================================================================" />
+
     <!--
       If we're being run by TeamCity, use their NUnit launcher
     -->
@@ -168,11 +173,6 @@
       If we're not being run by TeamCity, start NUnit directly
     -->
     <if test="${not property::exists('teamcity.dotnet.nunitlauncher2.0')}">
-
-      <property name="temp" value="${path::get-file-name(nunit.testassembly)}" />
-      <echo message="===================================================================" />
-      <echo message="Running tests in ${temp}" />
-      <echo message="===================================================================" />
 
       <exec
         program="${path::combine(nunit.path, 'nunit-console-x86.exe')}"
@@ -207,8 +207,9 @@
   -->
   <target name="nunit-x86" depends="require-nunit-x86">
 
+    <property name="temp" value="${path::get-file-name(nunit.testassembly)}" />
     <echo message="===================================================================" />
-    <echo message="Running tests in ${nunit.testassembly}" />
+    <echo message="Running tests in ${temp}" />
     <echo message="===================================================================" />
 
     <!--
