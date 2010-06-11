@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<project
+  xmlns="http://nant.sf.net/schemas/nant-0.85.win32.net-1.0.xsd"
+  name="SwiftShader"
+>
+
+  <property name="swiftshader.path" value="C:/SwiftShader" />
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <!--
+    Installs the SwiftShader D3D9 replacement
+  -->
+  <target name="swiftshader-install" unless="${not directory::exists(swiftshader.path)}" >
+
+    <property name="windows" value="${environment::get-variable('windir')}" />
+    <property name="system32" value="${path::combine(windows, 'system32')}" />
+    <property name="dllcache" value="${path::combine(system32, 'dllcache')}" />
+    
+    <property name="swiftshader.d3d9" value="${path::combine(swiftshader.path, 'd3d9.dll')}" />
+    <property name="swiftshader.ini" value="${path::combine(swiftshader.path, 'SwiftShader.ini')}" />
+    <property name="system32.d3d9" value="${path::combine(system32, 'd3d9.dll')}" />
+    <property name="system32.ini" value="${path::combine(system32, 'SwiftShader.ini')}" />
+    <property name="dllcache.d3d9" value="${path::combine(dllcache, 'd3d9.dll')}" />
+
+    <property name="system32.d3d9.bak" value="${path::combine(system32, 'd3d9.dll.bak')}" />
+    <property name="dllcache.d3d9.bak" value="${path::combine(dllcache, 'd3d9.dll.bak')}" />
+
+    <!--
+      Only install if we aren't installed right now, otherwise we might
+      obliterate the original DLLs.
+    -->
+    <if test="${not file::exists(system32.d3d9.bak)}">
+      <move file="${dllcache.d3d9}" tofile="${dllcache.d3d9.bak}" />
+      <move file="${system32.d3d9}" tofile="${system32.d3d9.bak}" />
+      <copy file="${swiftshader.d3d9}" tofile="${dllcache.d3d9}" />
+      <copy file="${swiftshader.d3d9}" tofile="${system32.d3d9}" />
+      <copy file="${swiftshader.ini}" tofile="${system32.ini}" />
+    </if>
+
+  </target>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <!--
+    Uninstalls the SwiftShader D3D9 replacement
+  -->
+  <target name="swiftshader-uninstall" unless="${not directory::exists(swiftshader.path)}" >
+
+    <property name="windows" value="${environment::get-variable('windir')}" />
+    <property name="system32" value="${path::combine(windows, 'system32')}" />
+    <property name="dllcache" value="${path::combine(system32, 'dllcache')}" />
+    
+    <property name="system32.d3d9" value="${path::combine(system32, 'd3d9.dll')}" />
+    <property name="dllcache.d3d9" value="${path::combine(dllcache, 'd3d9.dll')}" />
+
+    <property name="system32.d3d9.bak" value="${path::combine(system32, 'd3d9.dll.bak')}" />
+    <property name="dllcache.d3d9.bak" value="${path::combine(dllcache, 'd3d9.dll.bak')}" />
+
+    <!--
+      Only uninstall if we are installed right now
+    -->
+    <if test="${file::exists(system32.d3d9.bak)}">
+      <delete file="${dllcache.d3d9}" />
+      <delete file="${system32.d3d9}" />
+
+      <move file="${dllcache.d3d9.bak}" tofile="${dllcache.d3d9}" />
+      <move file="${system32.d3d9.bak}" tofile="${system32.d3d9}" />
+    </if>
+
+  </target>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+</project>
