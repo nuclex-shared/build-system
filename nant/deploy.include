@@ -142,8 +142,13 @@
         />
 
         <property name="temp.wcabsolute" value="${temp.wcrootdir}${temp.srcrelative}" />
-        <if test="${not file::exists(temp.wcabsolute)}">
-          <copy file="${temp.srcabsolute}" tofile="${temp.wcabsolute}" overwrite="true" />
+        <property name="temp.exists" value="${file::exists(temp.wcabsolute)}" />
+
+        <!-- Always copy the file - if it exists, we want to replace it with the new version -->
+        <copy file="${temp.srcabsolute}" tofile="${temp.wcabsolute}" overwrite="true" />
+
+        <!-- If the file didn't exist before, add it to the working copy -->
+        <if test="${not temp.exists}">
           <property name="subversion.filename" value="${temp.wcabsolute}" />
           <call target="subversion-add" />
         </if>
