@@ -143,7 +143,7 @@
 
         <property name="temp.wcabsolute" value="${temp.wcrootdir}${temp.srcrelative}" />
         <if test="${not file::exists(temp.wcabsolute)}">
-          <copy file="${temp.srcabsolute}" tofile="${temp.wcabsolute}" />
+          <copy file="${temp.srcabsolute}" tofile="${temp.wcabsolute}" overwrite="true" />
           <property name="subversion.filename" value="${temp.wcabsolute}" />
           <call target="subversion-add" />
         </if>
