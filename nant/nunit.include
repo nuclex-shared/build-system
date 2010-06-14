@@ -13,10 +13,7 @@
   <!--
       Locates NUnit and initializes the nunit.path property
   -->
-  <target
-    name="locate-nunit"
-    unless="${property::exists('nunit.path')}"
-  >
+  <target name="locate-nunit" unless="${property::exists('nunit.path')}">
 
     <!--
       Try to locate NUnit in its default path on x86 systems
