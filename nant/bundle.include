@@ -7,6 +7,7 @@
 
   <include buildfile="msbuild.include" />
   <include buildfile="nunit.include" />
+  <include buildfile="partcover.include" />
 
   <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
 
@@ -126,6 +127,65 @@
       </if>
 
     </foreach>
+
+  </target>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <!--
+    Runs the unit tests on all the projects in the bundle and measures coverage
+    
+    Inputs:
+      bundle.platform       Platform whose unit tests to run (decides which .platform.cv to use)
+      bundle.configuration  Build configuration ("Debug" or "Release")
+  -->
+  <target name="bundle-covertest">
+
+    <property name="partcover.assemblies" value="" />
+    <property name="partcover.namespaces" value="" />
+
+    <foreach
+      item="Line" in="${bundle.platform}.platform.csv" delim=","
+      property="temp.directory,temp.platform,temp.msbuildfile,temp.output"
+    >
+
+      <if test="${not string::starts-with(temp.directory, '#')}">
+
+        <property
+          name="temp.expandedoutput"
+          value="${string::replace(temp.output, '%build.configuration%', build.configuration)}"
+        />n
+        <property
+          name="temp.outputdirectory"
+          value="${temp.directory}/${temp.expandedoutput}"
+        />
+        
+        <property name="temp" value="${path::get-file-name(temp.directory)}" />
+        <foreach item="File" property="temp.assembly">
+          <in>
+            <items>
+              <include name="${temp.outputdirectory}/${temp}.exe" />
+              <include name="${temp.outputdirectory}/${temp}.dll" />
+            </items>
+          </in>
+          <do>
+            <!-- Convention: Project name is root namespace -->
+            <property
+              name="partcover.namespaces"
+              value="${partcover.namespaces} --include [${temp.directory}]*"
+            />
+            <property
+              name="partcover.assemblies"
+              value="${partcover.assemblies} &quot;${temp.assembly}&quot;"
+            />
+          </do>
+        </foreach>
+
+      </if>
+
+    </foreach>
+    
+    <call target="partcover" />
 
   </target>
 

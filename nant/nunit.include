@@ -70,10 +70,10 @@
     <!--
       Display what we've found out
     -->
-    <if test="${property::exists('teamcity.dotnet.nunitlauncher2.0')}">
+    <if test="${property::exists('teamcity.dotnet.nunitlauncher')}">
       <echo message="Using NUnit from TeamCity" />
     </if>
-    <if test="${not property::exists('teamcity.dotnet.nunitlauncher2.0')}">
+    <if test="${not property::exists('teamcity.dotnet.nunitlauncher')}">
       <if test="${property::exists('nunit.path')}">
         <echo message="NUnit located in ${nunit.path}" />
       </if>
@@ -92,7 +92,7 @@
       TeamCity has its own NUnit version that allows you to select x86 or x64 mode,
       so we don't require NUnit to be installed separately there.
     -->
-    <if test="${not property::exists('teamcity.dotnet.nunitlauncher2.0')}">
+    <if test="${not property::exists('teamcity.dotnet.nunitlauncher')}">
 
       <if test="${not property::exists('nunit.path')}">
         <fail message="NUnit is required for this build" />
@@ -114,12 +114,12 @@
       TeamCity has its own NUnit version that allows you to select x86 or x64 mode,
       so we don't require NUnit to be installed separately there.
     -->
-    <if test="${not property::exists('teamcity.dotnet.nunitlauncher2.0')}">
+    <if test="${not property::exists('teamcity.dotnet.nunitlauncher')}">
 
       <if test="${not property::exists('nunit.path')}">
         <fail message="NUnit 2.4.2 or later is required for this build" />
       </if>
-      <property name="temp" value="${path::combine(nunit.path, 'nunit-console-x86.exe'}" />
+      <property name="temp" value="${path::combine(nunit.path, 'nunit-console-x86.exe')}" />
       <if test="${not file::exists(temp)}">
         <fail message="NUnit 2.4.2 or later is required for this build" />
       </if>
@@ -146,7 +146,7 @@
     <!--
       If we're being run by TeamCity, use their NUnit launcher
     -->
-    <if test="${property::exists('teamcity.dotnet.nunitlauncher2.0')}">
+    <if test="${property::exists('teamcity.dotnet.nunitlauncher')}">
 
       <!-- If we're targeting .NET 4.0, use the .NET 4.0 NUnit runner -->
       <if test="${framework::get-target-framework() == 'net-4.0'}">
@@ -169,7 +169,7 @@
     <!--
       If we're not being run by TeamCity, start NUnit directly
     -->
-    <if test="${not property::exists('teamcity.dotnet.nunitlauncher2.0')}">
+    <if test="${not property::exists('teamcity.dotnet.nunitlauncher')}">
 
       <exec
         program="${path::combine(nunit.path, 'nunit-console-x86.exe')}"
@@ -212,7 +212,7 @@
     <!--
       If we're being run by TeamCity, use their NUnit launcher
     -->
-    <if test="${property::exists('teamcity.dotnet.nunitlauncher2.0')}">
+    <if test="${property::exists('teamcity.dotnet.nunitlauncher')}">
 
       <!-- If we're targeting .NET 4.0, use the .NET 4.0 NUnit runner -->
       <if test="${framework::get-target-framework() == 'net-4.0'}">
@@ -240,7 +240,7 @@
     <!--
       If we're not being run by TeamCity, start NUnit directly
     -->
-    <if test="${not property::exists('teamcity.dotnet.nunitlauncher2.0')}">
+    <if test="${not property::exists('teamcity.dotnet.nunitlauncher')}">
 
       <exec
         program="${path::combine(nunit.path, 'nunit-console-x86.exe')}"
