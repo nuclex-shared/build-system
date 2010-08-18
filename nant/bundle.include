@@ -149,7 +149,7 @@
     <property name="partcover.targetdir" value="${bundle.package}" />
     
     <!-- TeamCity's test runner somehow interferes with PartCover -->
-    <property name="partcover.noteamcity" value="true" />
+    <!-- <property name="partcover.noteamcity" value="true" /> -->
 
     <foreach
       item="Line" in="${bundle.platform}.platform.csv" delim=","
