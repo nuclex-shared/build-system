@@ -119,6 +119,7 @@
     Inputs:
       partcover.assemblies  Assemblies for which code coverage will be measured
       partcover.namespaces  Namespaces to include in coverage results
+      partcover.targetdir   Target directory for the generated coverage report
   -->
   <target name="partcover" depends="require-partcover require-nunit-x86">
 
@@ -130,6 +131,8 @@
       name="temp.assemblies"
       value="${string::replace(temp.assemblies, '&quot;', '\&quot;')}"
     />
+    <property name="temp.xmlpath" value="${path::combine(partcover.targetdir, 'coverage.xml')}" />
+    <property name="temp.htmlpath" value="${path::combine(partcover.targetdir, 'coverage.html')}" />
 
     <!--
       If we're being run by TeamCity, use their NUnit launcher
@@ -162,7 +165,7 @@
 
     <property
       name="temp"
-      value="${temp} --output coverage.xml"
+      value="${temp} --output &quot;${temp.xmlpath}&quot;"
     />
     <property
       name="temp"
@@ -175,10 +178,17 @@
       managed="true"
       commandline="${temp}"
     />
+    
+    <property name="temp" value="${path::combine(partcover.path, 'xslt')}" />
+    <property name="temp" value="${path::combine(temp, 'Full Report.xslt')}" />
+    <exec
+      program="msxsl.exe"
+      basedir="${partcover.path}"
+      commandline="&quot;${temp.xmlpath}&quot; &quot;${temp}&quot; -o &quot;${temp.htmlpath}&quot;"
+    />
 
   </target>
 
   <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
 
 </project>
-

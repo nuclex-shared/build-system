@@ -138,11 +138,15 @@
     Inputs:
       bundle.platform       Platform whose unit tests to run (decides which .platform.cv to use)
       bundle.configuration  Build configuration ("Debug" or "Release")
+      bundle.package        Package directory the generated reports will be written to
   -->
   <target name="bundle-covertest">
 
+    <mkdir dir="${bundle.package}" if="${not directory::exists(bundle.package)}" />
+
     <property name="partcover.assemblies" value="" />
     <property name="partcover.namespaces" value="" />
+    <property name="partcover.targetdir" value="${bundle.package}" />
 
     <foreach
       item="Line" in="${bundle.platform}.platform.csv" delim=","
