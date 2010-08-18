@@ -172,6 +172,9 @@
       value="${temp} ${partcover.namespaces}"
     />
 
+    <echo message="===================================================================" />
+    <echo message="Running unit tests with test coverage for all assemblies" />
+    <echo message="===================================================================" />
     <exec
       program="PartCover.exe"
       basedir="${partcover.path}"
@@ -179,6 +182,9 @@
       commandline="${temp}"
     />
     
+    <echo message="===================================================================" />
+    <echo message="Generating coverage report ${temp.htmlpath}" />
+    <echo message="===================================================================" />
     <property name="temp" value="${path::combine(partcover.path, 'xslt')}" />
     <property name="temp" value="${path::combine(temp, 'Full Report.xslt')}" />
     <exec
