@@ -142,13 +142,6 @@
   -->
   <target name="bundle-cover">
   
-    <property name="temp.old.bundle.configuration" value="${bundle.configuration}" />
-    <if test="${bundle.configuration == 'Release'}">
-      <property name="bundle.configuration" value="Debug" />
-      <property name="bundle.unittest" value="true" />
-      <call target="bundle-compile" />
-    </if>
-
     <mkdir dir="${bundle.package}" if="${not directory::exists(bundle.package)}" />
 
     <property name="partcover.assemblies" value="" />
@@ -200,8 +193,6 @@
     </foreach>
     
     <call target="partcover" />
-
-    <property name="bundle.configuration" value="${temp.old.bundle.configuration}" />
 
   </target>
 
