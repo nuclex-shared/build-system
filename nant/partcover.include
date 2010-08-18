@@ -137,7 +137,7 @@
     <!--
       If we're being run by TeamCity, use their NUnit launcher
     -->
-    <if test="${property::exists('teamcity.dotnet.nunitlauncher')}">
+    <if test="${property::exists('teamcity.dotnet.nunitlauncher') and not property::exists('partcover.noteamcity')}">
       <property name="temp" value="--target &quot;${teamcity.dotnet.nunitlauncher}&quot;" />
 
       <if test="${framework::get-target-framework() == 'net-4.0'}">
@@ -152,7 +152,7 @@
       </if>
     </if>
     
-    <if test="${not property::exists('teamcity.dotnet.nunitlauncher')}">
+    <if test="${not property::exists('teamcity.dotnet.nunitlauncher') or property::exists('partcover.noteamcity')}">
       <property 
         name="temp"
         value="--target &quot;${path::combine(nunit.path, 'nunit-console-x86.exe')}&quot;"
