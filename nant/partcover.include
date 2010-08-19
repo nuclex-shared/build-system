@@ -131,8 +131,14 @@
       name="temp.assemblies"
       value="${string::replace(temp.assemblies, '&quot;', '\&quot;')}"
     />
-    <property name="temp.xmlpath" value="${path::combine(partcover.targetdir, 'coverage.xml')}" />
-    <property name="temp.htmlpath" value="${path::combine(partcover.targetdir, 'coverage.html')}" />
+    <property
+      name="temp.partcoverxmlpath"
+      value="${path::combine(partcover.targetdir, 'coverage.partcover.xml')}"
+    />
+    <property
+      name="temp.ncoverxmlpath"
+      value="${path::combine(partcover.targetdir, 'coverage.ncover.xml')}"
+    />
 
     <!--
       If we're being run by TeamCity, use their NUnit launcher
@@ -165,7 +171,7 @@
 
     <property
       name="temp"
-      value="${temp} --output &quot;${temp.xmlpath}&quot;"
+      value="${temp} --output &quot;${temp.partcoverxmlpath}&quot;"
     />
     <property
       name="temp"
@@ -183,14 +189,14 @@
     />
     
     <echo message="===================================================================" />
-    <echo message="Generating coverage report ${temp.htmlpath}" />
+    <echo message="Converting PartCover report to NCover format" />
     <echo message="===================================================================" />
-    <property name="temp" value="${path::combine(partcover.path, 'xslt')}" />
-    <property name="temp" value="${path::combine(temp, 'Full Report.xslt')}" />
+    <property name="temp" value="References/scripts/xslt/partcover-to-ncover.xslt" />
     <exec
-      program="msxsl.exe"
-      basedir="${partcover.path}"
-      commandline="&quot;${temp.xmlpath}&quot; &quot;${temp}&quot; -o &quot;${temp.htmlpath}&quot;"
+      program="XslTransform.exe"
+      basedir="References/scripts/xslt"
+      managed="true"
+      commandline="&quot;${temp.partcoverxmlpath}&quot; &quot;${temp}&quot; &quot;${temp.ncoverxmlpath}&quot;"
     />
 
   </target>
