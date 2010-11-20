@@ -29,15 +29,15 @@
       <if test="${not string::starts-with(temp.directory, '#')}">
 
         <!-- Delete the project's own bin and obj folders -->
-        <delete dir="${temp.directory}/bin" />
-        <delete dir="${temp.directory}/obj" />
+        <delete dir="${temp.directory}/bin" failonerror="true" />
+        <delete dir="${temp.directory}/obj" failonerror="true" />
 
         <!-- XNA projects can have nested content projects. Clean these, too -->
         <foreach item="Folder" in="${temp.directory}" property="temp.subdirectory">
 
           <property name="temp.subdirectory" value="${path::get-file-name(temp.subdirectory)}" />
-          <delete dir="${temp.directory}/${temp.subdirectory}/bin" />
-          <delete dir="${temp.directory}/${temp.subdirectory}/obj" />
+          <delete dir="${temp.directory}/${temp.subdirectory}/bin" failonerror="true" />
+          <delete dir="${temp.directory}/${temp.subdirectory}/obj" failonerror="true" />
 
         </foreach>
 
