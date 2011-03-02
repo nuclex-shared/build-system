@@ -170,6 +170,10 @@
       If we're not being run by TeamCity, start NUnit directly
     -->
     <if test="${not property::exists('teamcity.dotnet.nunitlauncher')}">
+    
+      <if test="${not property::exists('nunit.reportpath')}">
+        <property name="nunit.reportpath" value="" />
+      </if>
 
       <exec
         program="${path::combine(nunit.path, 'nunit-console-x86.exe')}"
@@ -188,6 +192,7 @@
         <arg value="/nologo" />
         <arg value="/nodots" />
         <arg value="/noshadow" />
+        <arg value="/xml=${nunit.reportpath}" if="${nunit.reportpath != ''}" />
       </exec>
 
     </if>
@@ -242,6 +247,10 @@
     -->
     <if test="${not property::exists('teamcity.dotnet.nunitlauncher')}">
 
+      <if test="${not property::exists('nunit.reportpath')}">
+        <property name="nunit.reportpath" value="" />
+      </if>
+
       <exec
         program="${path::combine(nunit.path, 'nunit-console-x86.exe')}"
         failonerror="false"
@@ -259,6 +268,7 @@
         <arg value="/nologo" />
         <arg value="/noshadow" />
         <arg value="/nodots" />
+        <arg value="/xml=${nunit.reportpath}" if="${nunit.reportpath != ''}" />
       </exec>
 
     </if>
