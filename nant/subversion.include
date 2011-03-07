@@ -84,6 +84,15 @@
     </if>
 
     <!--
+      Try to locate Subversion in its default path on Unix systems
+    -->
+    <if test="${platform::is-unix()}">
+      <if test="${file::exists('/usr/bin/svn')}">
+        <property name="subversion.path" value="/usr/bin/" />
+      </if>
+    </if>
+
+    <!--
       Display what we've found out
     -->
     <if test="${property::exists('subversion.path')}">
@@ -102,7 +111,12 @@
     <if test="${not property::exists('subversion.path')}">
       <fail message="Subversion is required for this build" />
     </if>
-    <property name="temp" value="${path::combine(subversion.path, 'svn.exe')}" />
+    <if test="${not platform::is-unix()}">
+      <property name="temp" value="${path::combine(subversion.path, 'svn.exe')}" />
+    </if>
+    <if test="${platform::is-unix()}">
+      <property name="temp" value="${path::combine(subversion.path, 'svn')}" />
+    </if>
     <if test="${not file::exists(temp)}">
       <fail message="Subversion is required for this build" />
     </if>
@@ -234,11 +248,20 @@
       />
     </if>
 
-    <exec
-      program="${subversion.path}svn.exe"
-      workingdir="."
-      commandline="${subversion.commandline} ${temp}"
-    />
+    <if test="${not platform::is-unix()}">
+      <exec
+        program="${subversion.path}svn.exe"
+        workingdir="."
+        commandline="${subversion.commandline} ${temp}"
+      />
+    </if>
+    <if test="${platform::is-unix()}">
+      <exec
+        program="${subversion.path}svn"
+        workingdir="."
+        commandline="${subversion.commandline} ${temp}"
+      />
+    </if>
 
   </target>
 
