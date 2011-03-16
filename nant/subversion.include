@@ -222,6 +222,29 @@
   <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
 
   <!--
+    Checks out a working copy from a repository
+
+    Inputs:
+      subversion.url        Repository URL that will be checked out
+      subversion.target     Target directory into which the checkout will be performed
+  -->
+  <target
+    name="subversion-export"
+    depends="require-subversion"
+    description="Exports a working copy"
+  >
+
+    <property
+      name="subversion.commandline"
+      value="export ${subversion.url} ${subversion.target}"
+    />
+    <call target="subversion" />
+
+  </target>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <!--
     Invokes subversion
 
     Inputs:
