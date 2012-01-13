@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<project
+  xmlns="http://nant.sf.net/schemas/nant-0.85.win32.net-1.0.xsd"
+  name="Simian"
+>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <!--
+      Locates Simian and initializes the simian.path property
+  -->
+  <target
+    name="locate-simian"
+    unless="${property::exists('simian.path')}"
+  >
+
+    <!--
+      Try to locate Simian in its default path on x86 systems
+    -->
+    <if test="${not property::exists('simian.path')}">
+      <if test="${environment::variable-exists('ProgramFiles')}">
+        <foreach
+          item="Folder"
+          in="${environment::get-variable('ProgramFiles')}"
+          property="temp"
+        >
+          <property name="temp.name" value="${string::to-lower(path::get-file-name(temp))}" />
+
+          <if test="${string::starts-with(temp.name, 'simian')}">
+            <if test="${file::exists(path::combine(temp, 'Simian.exe'))}">
+              <property name="simian.path" value="temp" />
+            </if>
+          </if>
+
+          <if test="${string::starts-with(temp.name, 'gubka bob') or string::starts-with(temp.name, 'simian')}">
+            <foreach item="Folder" in="${temp}" property="temp.sub">
+              <property
+                name="temp.subname"
+                value="${string::to-lower(path::get-file-name(temp.sub))}"
+              />
+              <if test="${string::starts-with(temp.subname, 'simian')}">
+                <if test="${file::exists(path::combine(temp.sub, 'Simian.exe'))}">
+                  <property name="simian.path" value="${temp.sub}" />
+                </if>
+              </if>
+            </foreach>
+          </if>
+        </foreach>
+      </if>
+    </if>
+
+    <!--
+      Try to locate Simian in its default path on x64 systems
+    -->
+    <if test="${not property::exists('simian.path')}">
+      <if test="${environment::variable-exists('ProgramW6432')}">
+        <foreach
+          item="Folder"
+          in="${environment::get-variable('ProgramW6432')}"
+          property="temp"
+        >
+          <property name="temp.name" value="${string::to-lower(path::get-file-name(temp))}" />
+
+          <if test="${string::starts-with(temp.name, 'simian')}">
+            <if test="${file::exists(path::combine(temp, 'Simian.exe'))}">
+              <property name="simian.path" value="temp" />
+            </if>
+          </if>
+
+          <if test="${string::starts-with(temp.name, 'gubka bob') or string::starts-with(temp.name, 'simian')}">
+            <foreach item="Folder" in="${temp}" property="temp.sub">
+              <property
+                name="temp.subname"
+                value="${string::to-lower(path::get-file-name(temp.sub))}"
+              />
+              <if test="${string::starts-with(temp.subname, 'simian')}">
+                <if test="${file::exists(path::combine(temp.sub, 'Simian.exe'))}">
+                  <property name="simian.path" value="${temp.sub}" />
+                </if>
+              </if>
+            </foreach>
+          </if>
+        </foreach>
+      </if>
+    </if>
+    
+    <!--
+      Display what we've found out
+    -->
+    <if test="${property::exists('simian.path')}">
+      <echo message="Simian located in ${simian.path}" />
+    </if>
+    <if test="${not property::exists('simian.path')}">
+      <echo message="Simian not found. Use -D:simian.path=... to set path" />
+    </if>
+
+  </target>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <target name="require-simian" depends="locate-simian">
+
+    <if test="${not property::exists('simian.path')}">
+      <fail message="Simian is required for this build" />
+    </if>
+    <if test="${not file::exists(simian.path)}">
+      <fail message="Simian is required for this build" />
+    </if>
+
+  </target>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <!--
+    Runs Simian
+
+    Inputs:
+      simian.directories  Comma separated directories that will be analyzed by Simian
+      simian.threshold    Minimum number of successive duplice lines to look for
+      simian.targetdir    Target directory for the generated XML report
+  -->
+  <target name="simian" depends="require-simian">
+    <property name="temp.simianexe" value="${path::get-file-name(simian.path)}" />
+    <property name="temp.simiandir" value="${path::get-directory-name(simian.path)}" />
+    <property name="temp.targetpath" value="${path::combine(simian.targetdir, 'simian.xml')}" />
+    
+    <property name="simian.threshold" value="5" overwrite="false" />
+    
+    <property name="temp" value="${path::combine(simian.targetdir, 'simian.xml')}" />
+    <property
+      name="temp.arguments"
+      value="-formatter=xml:&quot;${temp}&quot; -threshold=${simian.threshold}"
+    />
+    
+    <property name="temp" value="${string::replace(simian.directories, ', ', ',')}" />
+    <foreach item="String" in="${temp}" delim="," property="temp.directory">
+      <property
+        name="temp.arguments"
+        value="${temp.arguments} -includes=&quot;${temp.directory}/*.cs&quot;"
+      />
+      <property
+        name="temp.arguments"
+        value="${temp.arguments} -includes=&quot;${temp.directory}/**/*.cs&quot;"
+      />
+    </foreach>
+    
+    <echo message="===================================================================" />
+    <echo message="Running Simian (code duplicate finder)" />
+    <echo message="===================================================================" />
+    <exec
+      program="${temp.simianexe}"
+      basedir="${temp.simiandir}"
+      managed="true"
+      failonerror="false"
+      commandline="${temp.arguments}"
+    />
+  </target>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+</project>

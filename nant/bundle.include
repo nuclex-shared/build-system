@@ -8,6 +8,7 @@
   <include buildfile="msbuild.include" />
   <include buildfile="nunit.include" />
   <include buildfile="partcover.include" />
+  <include buildfile="simian.include" />
 
   <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
 
@@ -198,6 +199,75 @@
     </foreach>
     
     <call target="partcover" />
+
+  </target>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <!--
+    Analyzes code on all projects in the bundle
+    
+    Inputs:
+      bundle.platform       Platform whose unit tests to run (decides which .platform.cv to use)
+      bundle.configuration  Build configuration ("Debug" or "Release")
+      bundle.package        Package directory the generated reports will be written to
+  -->
+  <target name="bundle-analyze">
+    <property name="simian.targetdir" value="${bundle.package}" />
+
+    <property name="temp.simian" value="" />
+    <foreach
+      item="Line" in="${bundle.platform}.platform.csv" delim=","
+      property="temp.directory,temp.platform,temp.msbuildfile,temp.output"
+    >
+
+      <if test="${not string::starts-with(temp.directory, '#')}">
+
+        <property
+          name="temp.expandedoutput"
+          value="${string::replace(temp.output, '%build.configuration%', build.configuration)}"
+        />
+        <property
+          name="temp.outputdirectory"
+          value="${temp.directory}/${temp.expandedoutput}"
+        />
+
+        <property name="temp" value="${path::get-file-name(temp.directory)}" />
+        <foreach item="File" property="nunit.testassembly">
+          <in>
+            <items>
+              <include name="${temp.outputdirectory}/${temp}.exe" />
+              <include name="${temp.outputdirectory}/${temp}.dll" />
+            </items>
+          </in>
+          <do>
+            <if test="${property::exists('bundle.package')}">
+              <property
+                name="nunit.reportpath"
+                value="${path::combine(bundle.package, temp.directory)}-TestResult.xml"
+              />
+            </if>
+            <!-- <call target="nunit" /> -->
+          </do>
+        </foreach>
+
+        <property
+          name="temp.simian"
+          value="${temp.simian},${temp.directory}"
+        />
+
+      </if>
+
+    </foreach>
+    
+    <if test="${string::starts-with(temp.simian, ',')}">
+      <property name="temp.length" value="${string::get-length(temp.simian) - 1}" />
+      <property
+        name="simian.directories"
+        value="${string::substring(temp.simian, 1, temp.length)}"
+      />
+      <call target="simian" />
+    </if>
 
   </target>
 
