@@ -121,18 +121,17 @@
       simian.targetdir    Target directory for the generated XML report
   -->
   <target name="simian" depends="require-simian">
-    <property name="temp.simianexe" value="${path::get-file-name(simian.path)}" />
-    <property name="temp.simiandir" value="${path::get-directory-name(simian.path)}" />
-    <property name="temp.targetpath" value="${path::combine(simian.targetdir, 'simian.xml')}" />
-    
     <property name="simian.threshold" value="5" overwrite="false" />
     
-    <property name="temp" value="${path::combine(simian.targetdir, 'simian.xml')}" />
+    <property name="temp.simianexe" value="${path::get-file-name(simian.path)}" />
+    <property name="temp.simiandir" value="${path::get-directory-name(simian.path)}" />
+
+    <property name="temp.targetpath" value="${path::combine(simian.targetdir, 'simian.xml')}" />
     <property
       name="temp.arguments"
-      value="-formatter=xml:&quot;${temp}&quot; -threshold=${simian.threshold}"
+      value="-formatter=xml:&quot;${temp.targetpath}&quot; -threshold=${simian.threshold}"
     />
-    
+
     <property name="temp" value="${string::replace(simian.directories, ', ', ',')}" />
     <foreach item="String" in="${temp}" delim="," property="temp.directory">
       <property
