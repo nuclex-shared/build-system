@@ -95,11 +95,14 @@
   -->
   <target name="fxcop" depends="require-fxcop">
 
+    <property name="fxcop.additionalarguments" value="" overwrite="false" />
+
     <property name="temp.targetpath" value="${path::combine(fxcop.targetdir, 'fxcop.xml')}" />
     <property name="temp" value="${path::combine(fxcop.targetdir, 'fxcop.xml')}" />
     <property
       name="temp.arguments" value="/out:&quot;${temp.targetpath}&quot;"
     />
+    <property name="temp.arguments" value="${temp.arguments} ${fxcop.additionalarguments}" />
 
     <property name="temp" value="${string::replace(fxcop.assemblies, ', ', ',')}" />
     <foreach item="String" in="${temp}" delim="," property="temp.assemblies">
@@ -112,6 +115,7 @@
     <if test="${not property::exists('fxcop.reportpath')}">
       <property name="fxcop.reportpath" value="" />
     </if>
+    
     
     <echo message="===================================================================" />
     <echo message="Running FxCop (static code analysis)" />
