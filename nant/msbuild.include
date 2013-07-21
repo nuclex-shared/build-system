@@ -81,10 +81,6 @@
 
   <target name="require-msbuild" depends="locate-msbuild">
 
-    <!--
-      TeamCity has its own NUnit version that allows you to select x86 or x64 mode,
-      so we don't require NUnit to be installed separately there.
-    -->
     <if test="${not property::exists('msbuild.path')}">
       <fail message="MSBuild is required for this build" />
     </if>
@@ -114,6 +110,12 @@
     <echo message="===================================================================" />
 
     <property name="temp" value="${framework::get-target-framework()}" />
+    <if test="${property::exists('msbuild.vs10')}">
+      <property name="temp.vs10mode" value="${msbuild.vs10}" />
+    </if>
+    <if test="${not property::exists('msbuild.vs10')}">
+      <property name="temp.vs10mode" value="false" />
+    </if>
 
     <if test="${path::get-extension(msbuild.project) == '.vcproj'}">
       <property
@@ -139,7 +141,7 @@
         <arg value="/property:Configuration=${msbuild.configuration}" />
         <!-- <arg value="/property:Platform=${msbuild.platform}" /> -->
         <arg value="/property:UNITTEST=true" if="${msbuild.unittest == 'true'}" />
-        <arg value="/property:VisualStudioVersion=11.0" unless="${msbuild.vc10 == 'true'}" />
+        <arg value="/property:VisualStudioVersion=11.0" unless="${temp.vs10mode == 'true'}" />
       </exec>
       <!--
       <arg value="/property:TargetFrameworkVersion=v2.0" if="${temp == 'net-2.0'}" />
