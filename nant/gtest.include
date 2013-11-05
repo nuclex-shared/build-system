@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<project
+  xmlns="http://nant.sf.net/schemas/nant-0.85.win32.net-1.0.xsd"
+  name="Googletest"
+>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <!--
+      Locates Googletest and initializes the gtest.path property
+  -->
+  <target name="locate-gtest" unless="${property::exists('gtest.path')}">
+
+    <!--
+      Try to locate Googletest in its default path on x86 systems
+    -->
+    <if test="${not property::exists('gtest.path')}">
+      <foreach
+        item="Folder"
+        in="References"
+        property="temp"
+      >
+        <if test="${string::starts-with(string::to-lower(path::get-file-name(temp)), 'gtest')}">
+          <property name="gtest.path" value="${temp}" />
+        </if>
+      </foreach>
+
+      <if test="${property::exists('gtest.path')}">
+        <property name="gtest.path" value="${path::get-full-path(gtest.path)}" />
+      </if>
+    </if>
+
+    <!--
+      Display what we've found out
+    -->
+    <if test="${property::exists('gtest.path')}">
+      <echo message="Googletest located in ${gtest.path}" />
+    </if>
+    <if test="${not property::exists('gtest.path')}">
+      <echo message="Googletest not found. Use -D:gtest.path=... to set path" />
+    </if>
+
+  </target>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <target name="require-gtest-x86" depends="locate-gtest">
+
+    <if test="${not property::exists('gtest.path')}">
+      <fail message="Googletest is required for this build" />
+    </if>
+    <property name="temp" value="${path::combine(gtest.path, 'gtest-runner-console-x86.exe')}" />
+    <if test="${not file::exists(temp)}">
+      <fail message="An x86 Googletest runner is required for this build" />
+    </if>
+
+  </target>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <target name="require-gtest-x64" depends="locate-gtest">
+
+    <if test="${not property::exists('gtest.path')}">
+      <fail message="Googletest is required for this build" />
+    </if>
+    <property name="temp" value="${path::combine(gtest.path, 'gtest-runner-console-x64.exe')}" />
+    <if test="${not file::exists(temp)}">
+      <fail message="An x64 Googletest runner is required for this build" />
+    </if>
+
+  </target>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <!--
+    Runs unit tests in a single shared library
+
+    Inputs:
+      gtest.testlibrary    Shared library that will be tested with Googletest
+      gtest.reportpath     Path to which the test results will be written
+  -->
+  <target name="gtest-x86" depends="require-gtest-x86">
+
+    <property name="temp" value="${path::get-file-name(gtest.testlibrary)}" />
+    <echo message="===================================================================" />
+    <echo message="Running tests in ${temp}" />
+    <echo message="===================================================================" />
+
+    <if test="${not property::exists('gtest.reportpath')}">
+      <property name="gtest.reportpath" value="" />
+    </if>
+
+    <echo message="${gtest.testlibrary}" />
+
+    <exec
+      program="${path::combine(gtest.path, 'gtest-runner-console-x86.exe')}"
+      failonerror="false"
+      managed="false"
+    >
+      <!-- <arg file="&quot;${gtest.testlibrary}&quot;" /> -->
+      <arg value="${gtest.testlibrary}" />
+      <!--
+      <arg value="Nix" />
+      <arg value="/xml=${gtest.reportpath}" if="${gtest.reportpath != ''}" />
+      -->
+    </exec>
+
+  </target>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+  <!--
+    Runs unit tests in a single assembly
+
+    Inputs:
+      gtest.testlibrary    Shared library that will be tested with Googletest
+      gtest.reportpath     Path to which the test results will be written
+  -->
+  <target name="gtest-x64" depends="require-gtest-x64">
+
+    <property name="temp" value="${path::get-file-name(gtest.testlibrary)}" />
+    <echo message="===================================================================" />
+    <echo message="Running tests in ${temp}" />
+    <echo message="===================================================================" />
+
+    <if test="${not property::exists('gtest.reportpath')}">
+      <property name="gtest.reportpath" value="" />
+    </if>
+
+    <exec
+      program="${path::combine(gtest.path, 'gtest-runner-console-x64.exe')}"
+      failonerror="false"
+      managed="false"
+    >
+      <arg file="${gtest.testlibrary}" />
+      <arg value="/xml=${gtest.reportpath}" if="${gtest.reportpath != ''}" />
+    </exec>
+
+  </target>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+</project>

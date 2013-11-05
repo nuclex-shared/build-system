@@ -7,6 +7,7 @@
 
   <include buildfile="msbuild.include" />
   <include buildfile="nunit.include" />
+  <include buildfile="gtest.include" />
   <include buildfile="partcover.include" />
   <include buildfile="simian.include" />
   <include buildfile="fxcop.include" />
@@ -96,44 +97,104 @@
   -->
   <target name="bundle-test">
 
-    <foreach
-      item="Line" in="${bundle.platform}.platform.csv" delim=","
-      property="temp.directory,temp.platform,temp.msbuildfile,temp.output"
-    >
+    <property name="temp.isnative" value="false" />
+    <if test="${string::starts-with(bundle.platform, 'msvc')}">
+      <property name="temp.isnative" value="true" />
+    </if>
+    
+    <if test="${temp.isnative=='false'}">
 
-      <if test="${not string::starts-with(temp.directory, '#')}">
+      <foreach
+        item="Line" in="${bundle.platform}.platform.csv" delim=","
+        property="temp.directory,temp.platform,temp.msbuildfile,temp.output"
+      >
+      
+        <if test="${not string::starts-with(temp.directory, '#')}">
 
-        <property
-          name="temp.expandedoutput"
-          value="${string::replace(temp.output, '%build.configuration%', build.configuration)}"
-        />
-        <property
-          name="temp.outputdirectory"
-          value="${temp.directory}/${temp.expandedoutput}"
-        />
+          <property
+            name="temp.expandedoutput"
+            value="${string::replace(temp.output, '%build.configuration%', build.configuration)}"
+          />
+          <property
+            name="temp.outputdirectory"
+            value="${temp.directory}/${temp.expandedoutput}"
+          />
 
-        <property name="temp" value="${path::get-file-name(temp.directory)}" />
-        <foreach item="File" property="nunit.testassembly">
-          <in>
-            <items>
-              <include name="${temp.outputdirectory}/${temp}.exe" />
-              <include name="${temp.outputdirectory}/${temp}.dll" />
-            </items>
-          </in>
-          <do>
-            <if test="${property::exists('bundle.package')}">
-              <property
-                name="nunit.reportpath"
-                value="${path::combine(bundle.package, temp.directory)}-TestResult.xml"
-              />
-            </if>
-            <call target="nunit" />
-          </do>
-        </foreach>
+          <property name="temp" value="${path::get-file-name(temp.directory)}" />
+          <foreach item="File" property="nunit.testassembly">
+            <in>
+              <items>
+                <include name="${temp.outputdirectory}/${temp}.exe" />
+                <include name="${temp.outputdirectory}/${temp}.dll" />
+              </items>
+            </in>
+            <do>
+              <if test="${property::exists('bundle.package')}">
+                <property
+                  name="nunit.reportpath"
+                  value="${path::combine(bundle.package, temp.directory)}-TestResult.xml"
+                />
+              </if>
+              <call target="nunit" />
+            </do>
+          </foreach>
 
-      </if>
+        </if>
 
-    </foreach>
+      </foreach>
+
+    </if>
+    
+    <if test="${temp.isnative=='true'}">
+
+      <foreach
+        item="Line" in="${bundle.platform}.platform.csv" delim=","
+        property="temp.directory,temp.platform,temp.msbuildfile,temp.output"
+      >
+      
+        <if test="${not string::starts-with(temp.directory, '#')}">
+        
+          <property
+            name="temp.expandedoutput"
+            value="${string::replace(temp.output, '%build.configuration%', build.configuration)}"
+          />
+          <property
+            name="temp.outputdirectory"
+            value="${temp.directory}/${temp.expandedoutput}"
+          />
+          
+          <property name="temp" value="${path::get-file-name(temp.directory)}" />
+          <foreach item="File" property="gtest.testlibrary">
+            <in>
+              <items>
+                <include name="${temp.outputdirectory}/${temp}.exe" />
+                <include name="${temp.outputdirectory}/${temp}.dll" />
+              </items>
+            </in>
+            <do>
+              <if test="${property::exists('bundle.package')}">
+                <property
+                  name="gtest.reportpath"
+                  value="${path::combine(bundle.package, temp.directory)}-TestResult.xml"
+                />
+              </if>
+              <if test="${temp.platform=='x86'}">
+                <call target="gtest-x86" />
+              </if>
+              <if test="${temp.platform=='Win32'}">
+                <call target="gtest-x86" />
+              </if>
+              <if test="${temp.platform=='x64'}">
+                <call target="gtest-x64" />
+              </if>
+            </do>
+          </foreach>
+
+        </if>
+
+      </foreach>
+
+    </if>
 
   </target>
 
