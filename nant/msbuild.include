@@ -141,7 +141,7 @@
         <arg value="/property:Configuration=${msbuild.configuration}" />
         <!-- <arg value="/property:Platform=${msbuild.platform}" /> -->
         <arg value="/property:UNITTEST=true" if="${msbuild.unittest == 'true'}" />
-        <arg value="/property:VisualStudioVersion=11.0" unless="${temp.vs10mode == 'true'}" />
+        <!-- <arg value="/property:VisualStudioVersion=11.0" unless="${temp.vs10mode == 'true'}" /> -->
       </exec>
       <!--
       <arg value="/property:TargetFrameworkVersion=v2.0" if="${temp == 'net-2.0'}" />
