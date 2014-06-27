@@ -276,6 +276,10 @@
       use the script on the command line manually.
     -->
     <property name="temp" value="--non-interactive" />
+    <property
+      name="temp"
+      value="--trust-server-cert ${temp}"
+    />
     <if test="${property::exists('subversion.username')}">
       <property
         name="temp"
