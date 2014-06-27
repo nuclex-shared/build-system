@@ -29,7 +29,7 @@
             name="temp.foldername"
             value="${string::to-lower(path::get-file-name(temp))}"
           />
-          <if test="${string::starts-with(temp.foldername, 'sliksvn')}">
+          <if test="${string::starts-with(temp.foldername, 'tortoisesvn')}">
             <if test="${file::exists(temp + '/bin/svn.exe')}">
               <property name="subversion.path" value="${temp}/bin/" />
             </if>
@@ -37,6 +37,11 @@
           <if test="${string::starts-with(temp.foldername, 'collabnet subversion')}">
             <if test="${file::exists(temp + '/svn.exe')}">
               <property name="subversion.path" value="${temp}/" />
+            </if>
+          </if>
+          <if test="${string::starts-with(temp.foldername, 'sliksvn')}">
+            <if test="${file::exists(temp + '/bin/svn.exe')}">
+              <property name="subversion.path" value="${temp}/bin/" />
             </if>
           </if>
           <if test="${string::starts-with(temp.foldername, 'subversion')}">
@@ -66,14 +71,25 @@
             name="temp.foldername"
             value="${string::to-lower(path::get-file-name(temp))}"
           />
-          <if test="${string::starts-with(temp.foldername, 'sliksvn')}">
-            <property name="subversion.path" value="${temp}/bin/" />
+          <if test="${string::starts-with(temp.foldername, 'tortoisesvn')}">
+            <if test="${file::exists(temp + '/bin/svn.exe')}">
+              <property name="subversion.path" value="${temp}/bin/" />
+            </if>
           </if>
           <if test="${string::starts-with(temp.foldername, 'collabnet subversion')}">
-            <property name="subversion.path" value="${temp}/" />
+            <if test="${file::exists(temp + '/svn.exe')}">
+              <property name="subversion.path" value="${temp}/" />
+            </if>
+          </if>
+          <if test="${string::starts-with(temp.foldername, 'sliksvn')}">
+            <if test="${file::exists(temp + '/bin/svn.exe')}">
+              <property name="subversion.path" value="${temp}/bin/" />
+            </if>
           </if>
           <if test="${string::starts-with(temp.foldername, 'subversion')}">
-            <property name="subversion.path" value="${temp}/bin/" />
+            <if test="${file::exists(temp + '/bin/svn.exe')}">
+              <property name="subversion.path" value="${temp}/bin/" />
+            </if>
           </if>
         </foreach>
 
