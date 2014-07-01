@@ -281,7 +281,7 @@
       item="Line" in="${bundle.platform}.platform.csv" delim=","
       property="temp.directory,temp.platform,temp.msbuildfile,temp.output"
     >
-
+    
       <if test="${not string::starts-with(temp.directory, '#')}">
 
         <property
@@ -308,12 +308,10 @@
                 value="${path::combine(bundle.package, temp.directory)}-TestResult.xml"
               />
             </if>
-          <property
-            name="temp.fxcop"
-            value="${temp.fxcop},${temp.assembly}"
-          />
-	    
-            <!-- <call target="nunit" /> -->
+            <property
+              name="temp.fxcop"
+              value="${temp.fxcop},${temp.assembly}"
+            />
           </do>
         </foreach>
 
@@ -321,14 +319,10 @@
           name="temp.simian"
           value="${temp.simian},${temp.directory}"
         />
-
       </if>
       
     </foreach>
 
-<!--
-    <echo message="====> [${temp.fxcop}]" />
-    
     <if test="${string::starts-with(temp.simian, ',')}">
       <property name="simian.targetdir" value="${bundle.package}" />
       <property name="temp.length" value="${string::get-length(temp.simian) - 1}" />
@@ -338,7 +332,7 @@
       />
       <call target="simian" />
     </if>
-
+<!--
     <if test="${string::starts-with(temp.fxcop, ',')}">
       <property name="fxcop.targetdir" value="${bundle.package}" />
       <property name="temp.length" value="${string::get-length(temp.fxcop) - 1}" />
