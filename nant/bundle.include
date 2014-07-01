@@ -317,7 +317,7 @@
 
         <property
           name="temp.simian"
-          value="${temp.simian},${temp.directory}"
+          value="${temp.simian},${path::combine(temp.directory, 'Source')}"
         />
       </if>
       
