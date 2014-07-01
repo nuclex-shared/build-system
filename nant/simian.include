@@ -26,25 +26,20 @@
           property="temp"
         >
           <property name="temp.name" value="${string::to-lower(path::get-file-name(temp))}" />
-
           <if test="${string::starts-with(temp.name, 'simian')}">
-            <if test="${file::exists(path::combine(temp, 'Simian.exe'))}">
-              <property name="simian.path" value="temp" />
-            </if>
-          </if>
-
-          <if test="${string::starts-with(temp.name, 'gubka bob') or string::starts-with(temp.name, 'simian')}">
-            <foreach item="Folder" in="${temp}" property="temp.sub">
-              <property
-                name="temp.subname"
-                value="${string::to-lower(path::get-file-name(temp.sub))}"
-              />
-              <if test="${string::starts-with(temp.subname, 'simian')}">
-                <if test="${file::exists(path::combine(temp.sub, 'Simian.exe'))}">
-                  <property name="simian.path" value="${temp.sub}" />
+            <property name="temp.path" value="${path::combine(temp, 'bin')}" />
+            <if test="${directory::exists(temp.path)}">
+              <foreach item="File" in="${temp.path}" property="temp.sub">
+                <property
+                  name="temp.subname" value="${string::to-lower(path::get-file-name(temp.sub))}"
+                />
+                <if test="${string::starts-with(temp.subname, 'simian')}">
+                  <if test="${string::ends-with(temp.subname, '.exe')}">
+                    <property name="simian.path" value="${temp}" />
+                  </if>
                 </if>
-              </if>
-            </foreach>
+              </foreach>
+            </if>
           </if>
         </foreach>
       </if>
@@ -61,30 +56,25 @@
           property="temp"
         >
           <property name="temp.name" value="${string::to-lower(path::get-file-name(temp))}" />
-
           <if test="${string::starts-with(temp.name, 'simian')}">
-            <if test="${file::exists(path::combine(temp, 'Simian.exe'))}">
-              <property name="simian.path" value="temp" />
-            </if>
-          </if>
-
-          <if test="${string::starts-with(temp.name, 'gubka bob') or string::starts-with(temp.name, 'simian')}">
-            <foreach item="Folder" in="${temp}" property="temp.sub">
-              <property
-                name="temp.subname"
-                value="${string::to-lower(path::get-file-name(temp.sub))}"
-              />
-              <if test="${string::starts-with(temp.subname, 'simian')}">
-                <if test="${file::exists(path::combine(temp.sub, 'Simian.exe'))}">
-                  <property name="simian.path" value="${temp.sub}" />
+            <property name="temp.path" value="${path::combine(temp, 'bin')}" />
+            <if test="${directory::exists(temp.path)}">
+              <foreach item="File" in="${temp.path}" property="temp.sub">
+                <property
+                  name="temp.subname" value="${string::to-lower(path::get-file-name(temp.sub))}"
+                />
+                <if test="${string::starts-with(temp.subname, 'simian')}">
+                  <if test="${string::ends-with(temp.subname, '.exe')}">
+                    <property name="simian.path" value="${temp}" />
+                  </if>
                 </if>
-              </if>
-            </foreach>
+              </foreach>
+            </if>
           </if>
         </foreach>
       </if>
     </if>
-    
+
     <!--
       Display what we've found out
     -->
@@ -104,7 +94,7 @@
     <if test="${not property::exists('simian.path')}">
       <fail message="Simian is required for this build" />
     </if>
-    <if test="${not file::exists(simian.path)}">
+    <if test="${not directory::exists(simian.path)}">
       <fail message="Simian is required for this build" />
     </if>
 
@@ -122,9 +112,6 @@
   -->
   <target name="simian" depends="require-simian">
     <property name="simian.threshold" value="5" overwrite="false" />
-    
-    <property name="temp.simianexe" value="${path::get-file-name(simian.path)}" />
-    <property name="temp.simiandir" value="${path::get-directory-name(simian.path)}" />
 
     <property name="temp.targetpath" value="${path::combine(simian.targetdir, 'simian.xml')}" />
     <property
@@ -143,7 +130,21 @@
         value="${temp.arguments} -includes=&quot;${temp.directory}/**/*.cs&quot;"
       />
     </foreach>
-    
+
+    <property name="temp.simiandir" value="${path::combine(simian.path, 'bin')}" />
+    <property name="temp.simianexe" value="" />
+    <foreach item="File" in="${temp.simiandir}" property="temp">
+      <property name="temp.name" value="${string::to-lower(path::get-file-name(temp))}" />
+      <if test="${string::starts-with(temp.name, 'simian')}">
+        <if test="${string::ends-with(temp.name, '.exe')}">
+          <property name="temp.simianexe" value="${temp.name}" />
+        </if>
+      </if>
+    </foreach>
+    <if test="${not file::exists(path::combine(temp.simiandir, temp.simianexe))}">
+      <fail message="Simian is required for this build" />
+    </if>
+
     <echo message="===================================================================" />
     <echo message="Running Simian (code duplicate finder)" />
     <echo message="===================================================================" />
