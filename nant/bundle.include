@@ -385,6 +385,7 @@
         <copy todir="${bundle.package}">
           <fileset basedir="${temp.outputdirectory}">
             <include name="**/*" />
+            <exclude name="*.mdb" /><!-- Debugging without sources is not possible -->
             <exclude name="*.pdb" /><!-- Debugging without sources is not possible -->
             <exclude name="*.idb" /><!-- This is only useful if we modify sources -->
             <exclude name="*.exp" /><!-- Nobody uses these anymore -->
