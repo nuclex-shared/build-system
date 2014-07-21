@@ -17,6 +17,18 @@
       If the user explicitly chose an msbuild version, make sure it is available
     -->
     <if test="${property::exists('msbuild.version')}">
+      <if test="${msbuild.version == 'mono-4.0'}">
+        <fail
+          unless="${framework::exists('mono-4.0')}"
+          message="The Mono installation with support for the .NET 4.0 profile is required"
+        />
+      </if>
+      <if test="${msbuild.version == 'mono-3.5'}">
+        <fail
+          unless="${framework::exists('mono-3.5')}"
+          message="The Mono installation with support for the .NET 3.5 profile is required"
+        />
+      </if>
       <if test="${msbuild.version == 'net-4.0'}">
         <fail
           unless="${framework::exists('net-4.0')}"
@@ -51,6 +63,12 @@
       <if test="${framework::exists('net-4.0')}">
         <property name="msbuild.version" value="net-4.0" />
       </if>
+      <if test="${framework::exists('mono-3.5')}">
+        <property name="msbuild.version" value="mono-3.5" />
+      </if>
+      <if test="${framework::exists('mono-4.0')}">
+        <property name="msbuild.version" value="mono-4.0" />
+      </if>
     </if>
 
     <!--
@@ -64,15 +82,31 @@
     <if test="${file::exists(temp)}">
       <property name="msbuild.path" value="${temp}" />
     </if>
+
+    <!--
+      Check if xbuild is there.
+    -->
+    <property
+      name="temp"
+      value="${framework::get-framework-directory(msbuild.version)}"
+    />
+    <property
+      name="temp"
+      value="${path::combine('/usr/lib/mono/xbuild/12.0/bin', 'xbuild.exe')}"
+    />
+<echo message="${temp}" />
+    <if test="${file::exists(temp)}">
+      <property name="msbuild.path" value="${temp}" />
+    </if>
     
     <!--
       Display what we've found out
     -->
     <if test="${property::exists('msbuild.path')}">
-      <echo message="MSBuild located in ${msbuild.path}" />
+      <echo message="MSBuild / xbuild located in ${msbuild.path}" />
     </if>
     <if test="${not property::exists('msbuild.path')}">
-      <echo message="MSBuild not found. Use -D:msbuild.path=... to set path" />
+      <echo message="MSBuild / xbuild not found. Use -D:msbuild.path=... to set path" />
     </if>
 
   </target>
