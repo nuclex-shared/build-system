@@ -123,25 +123,41 @@
       <property name="nunit.reportpath" value="" />
     </if>
 
-    <exec
-      program="${path::combine(nunit.path, 'nunit-console-x86.exe')}"
-      failonerror="false"
-      managed="true"
-    >
-      <environment>
-        <variable
-          name="COMPLUS_Version"
-          value="v4.0.30319"
-          if="${framework::get-target-framework() == 'net-4.0'}"
-        />
-      </environment>
+    <if test="${not platform::is-windows()}">
+      <exec
+        program="${path::combine(nunit.path, 'nunit-console-x86.exe')}"
+        failonerror="false"
+        managed="true"
+      >
+        <arg file="${nunit.testassembly}" />
+        <arg value="-nologo" />
+        <arg value="-nodots" />
+        <arg value="-noshadow" />
+        <arg value="-xml=${nunit.reportpath}" if="${nunit.reportpath != ''}" />
+      </exec>
+    </if>
 
-      <arg file="${nunit.testassembly}" />
-      <arg value="/nologo" />
-      <arg value="/nodots" />
-      <arg value="/noshadow" />
-      <arg value="/xml=${nunit.reportpath}" if="${nunit.reportpath != ''}" />
-    </exec>
+    <if test="${platform::is-windows()}">
+      <exec
+        program="${path::combine(nunit.path, 'nunit-console-x86.exe')}"
+        failonerror="false"
+        managed="true"
+      >
+        <environment>
+          <variable
+            name="COMPLUS_Version"
+            value="v4.0.30319"
+            if="${framework::get-target-framework() == 'net-4.0'}"
+          />
+        </environment>
+
+        <arg file="${nunit.testassembly}" />
+        <arg value="/nologo" />
+        <arg value="/nodots" />
+        <arg value="/noshadow" />
+        <arg value="/xml=${nunit.reportpath}" if="${nunit.reportpath != ''}" />
+      </exec>
+    </if>
 
   </target>
 
