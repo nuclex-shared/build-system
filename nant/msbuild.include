@@ -29,6 +29,26 @@
           message="The Mono installation with support for the .NET 3.5 profile is required"
         />
       </if>
+      <if test="${msbuild.version == 'net-4.5'}">
+        <if test="${environment::variable-exists('ProgramW6432')}">
+          <property name="temp" value="${environment::get-variable('ProgramW6432')}" />
+          <property name="temp" value="${path::combine(temp, 'MSBuild/14.0/Bin/MSBuild.exe')}" />
+          <if test="${file::exists(temp)}">
+            <property name="msbuild.path" value="${temp}" />
+          </if>
+        </if>
+        <if test="${environment::variable-exists('ProgramFiles')}">
+          <property name="temp" value="${environment::get-variable('ProgramFiles')}" />
+          <property name="temp" value="${path::combine(temp, 'MSBuild/14.0/Bin/MSBuild.exe')}" />
+          <if test="${file::exists(temp)}">
+            <property name="msbuild.path" value="${temp}" />
+          </if>
+        </if>
+        <fail
+          unless="${property::exists('msbuild.path')}"
+          message="The .NET 4.5 build tools are required to compile this project"
+        />
+      </if>
       <if test="${msbuild.version == 'net-4.0'}">
         <fail
           unless="${framework::exists('net-4.0')}"
@@ -70,33 +90,35 @@
         <property name="msbuild.version" value="mono-4.0" />
       </if>
     </if>
-
+    
     <!--
       Check if MSBuild.exe is there.
     -->
-    <property
-      name="temp"
-      value="${framework::get-framework-directory(msbuild.version)}"
-    />
-    <property name="temp" value="${path::combine(temp, 'MSBuild.exe')}" />
-    <if test="${file::exists(temp)}">
-      <property name="msbuild.path" value="${temp}" />
-    </if>
+    <if test="${not property::exists('msbuild.path')}">
+      <property
+        name="temp"
+        value="${framework::get-framework-directory(msbuild.version)}"
+      />
+      <property name="temp" value="${path::combine(temp, 'MSBuild.exe')}" />
+      <if test="${file::exists(temp)}">
+        <property name="msbuild.path" value="${temp}" />
+      </if>
 
-    <!--
-      Check if xbuild is there.
-    -->
-    <property
-      name="temp"
-      value="${framework::get-framework-directory(msbuild.version)}"
-    />
-    <property
-      name="temp"
-      value="${path::combine('/usr/lib/mono/xbuild/12.0/bin', 'xbuild.exe')}"
-    />
-<echo message="${temp}" />
-    <if test="${file::exists(temp)}">
-      <property name="msbuild.path" value="${temp}" />
+      <!--
+        Check if xbuild is there.
+      -->
+      <property
+        name="temp"
+        value="${framework::get-framework-directory(msbuild.version)}"
+      />
+      <property
+        name="temp"
+        value="${path::combine('/usr/lib/mono/xbuild/12.0/bin', 'xbuild.exe')}"
+      />
+      <!--<echo message="${temp}" />-->
+      <if test="${file::exists(temp)}">
+        <property name="msbuild.path" value="${temp}" />
+      </if>
     </if>
     
     <!--
