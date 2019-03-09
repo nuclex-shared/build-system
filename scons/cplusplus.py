@@ -351,7 +351,7 @@ def _add_library_directory(environment, library_directory):
 
     environment.Append(LIBPATH=[library_directory])
 
-# ------------------------------------------------------------------------------------------- #
+# ----------------------------------------------------------------------------------------------- #
 
 def _add_library(environment, library_name):
     """Adds a C/C++ library to the build
