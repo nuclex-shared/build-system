@@ -110,10 +110,18 @@ def _register_cplusplus_extension_methods(environment):
     environment.add_package = types.MethodType(
         _add_cplusplus_package, environment
     )
+    environment.build_shared_library = types.MethodType(
+        _build_cplusplus_shared_library, environment
+    )
 
 # ----------------------------------------------------------------------------------------------- #
 
 def _is_debug_build(environment):
+    """Checks whether a debug build has been requested
+
+    @param  environment  Environment whose settings will be checked for a debug build
+    @returns True if a debug build has been requested, otherwise False"""
+
     return 'DEBUG' in environment
 
 # ----------------------------------------------------------------------------------------------- #
@@ -128,6 +136,7 @@ def _set_standard_cplusplus_compiler_flags(environment):
         environment.Append(CXXFLAGS=['-fvisibility=hidden']) # Default visibility: don't export
         environment.Append(CXXFLAGS=['-Wpedantic']) # Enable all ISO C++ deviation warnings
         environment.Append(CXXFLAGS=['-Wall']) # Show all warnings
+        environment.Append(CXXFLAGS=['-Wno-unknown-pragmas']) # Don't warn about #pragma region
         #environment.Append(CXXFLAGS=['-flinker-output=pie']) # Position-independent executable
         environment.Append(CXXFLAGS=['-shared-libgcc']) # Show all warnings
         #environment.Append(CXXFLAGS=['-fpic -fpie]') # Position-independent lib/executable
@@ -172,11 +181,11 @@ def _set_standard_cplusplus_linker_flags(environment):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _add_cplusplus_package(environment, package_name, universal_library_names = None):
+def _add_cplusplus_package(environment, universal_package_name, universal_library_names = None):
     """Adds a precompiled package consisting of some header files and a code library
     to the current build.
 
-    @param  self                     The instance this method should work on
+    @param  environment              Environment to which a package will be added
     @param  universal_package_name   Name of the package that will be added to the build
     @param  universal_library_names  Names of libraries (inside the package) that need to
                                      be linked.
@@ -185,50 +194,40 @@ def _add_cplusplus_package(environment, package_name, universal_library_names = 
         the package is assumed. The universal_library_name can be used if a package
         offers multiple linkable library (i.e. boost modules, gtest + gtest_main)"""
 
-    references_directory = os.path.join('..', self._environment['REFERENCES_DIRECTORY'])
+    references_directory = os.path.join('..', environment['REFERENCES_DIRECTORY'])
     package_directory = os.path.join(references_directory, universal_package_name)
 
     # Path for the package's headers
-    include_directory = self._find_or_guess_include_directory(package_directory)
+    include_directory = cplusplus.find_or_guess_include_directory(package_directory)
     if include_directory is None:
         raise FileNotFoundError('Could not find include directory for package')
 
-    self.add_include_directory(include_directory)
+    environment.add_include_directory(include_directory)
 
     # Path for the package's libraries
-    library_directory = self._find_or_guess_library_directory(package_directory)
-    if include_directory is None:
+    library_directory = cplusplus.find_or_guess_library_directory(environment, package_directory)
+    if library_directory is None:
         raise FileNotFoundError('Could not find library directory for package')
 
-    self.add_library_directory(library_directory)
+    environment.add_library_directory(library_directory)
 
     # Library that needs to be linked
     if universal_library_names is None:
-        self.add_library(universal_package_name)
+        environment.add_library(universal_package_name)
     elif isinstance(universal_library_names, list):
         for universal_library_name in universal_library_names:
-            self.add_library(universal_library_name)
+            environment.add_library(universal_library_name)
     else:
-        self.add_library(universal_library_names)
+        environment.add_library(universal_library_names)
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _set_standard_compiler_flags(self):
-    """Sets up standard flags for the compiler
+def _build_cplusplus_shared_library(environment, universal_library_name):
+    """Creates a shared C/C++ library
 
-    @param  self  The instance this method should work on"""
-
-    self._environment.Append(CXXFLAGS=['-std=c++14'])
-    self._environment.Append(CXXFLAGS=['-fvisibility=hidden'])
-
-# ----------------------------------------------------------------------------------------------- #
-
-def build_shared_library(self, universal_library_name):
-    """Creates a shared library
-
-    @param  self                    The instance this method should work on
+    @param  environment             Environment controlling the build settings
     @param  universal_library_name  Name of the library in universal format
-                                        (i.e. 'My.Awesome.Stuff')
+                                    (i.e. 'My.Awesome.Stuff')
     @remarks
         Assumes the default conventions, i.e. all source code is contained in a directory
         named 'Source' and all headers in a directory named 'Include'.
@@ -236,35 +235,33 @@ def build_shared_library(self, universal_library_name):
         See get_platform_specific_library_name() for how the universal_library_name parameter
         is used to produce the output filename on different platforms."""
 
-    self._set_standard_compiler_flags()
-
     # Include directories
     # These will automatically be scanned by SCons for changes
-    self.add_include_directory(self._environment['HEADER_DIRECTORY'])
+    environment.add_include_directory(environment['HEADER_DIRECTORY'])
 
     # Use a separate directory for the object files instead of
     # cluttering up the source tree.
-    self._environment.VariantDir(
+    environment.VariantDir(
         os.path.join(
-            self._environment['INTERMEDIATE_DIRECTORY'],
-            self._environment['SOURCE_DIRECTORY']
+            environment['INTERMEDIATE_DIRECTORY'],
+            environment['SOURCE_DIRECTORY']
         ),
-        self._environment['SOURCE_DIRECTORY'],
+        environment['SOURCE_DIRECTORY'],
         duplicate=0
     )
 
     sources = cplusplus.enumerate_sources(
-        self._environment['SOURCE_DIRECTORY'],
-        self._environment['INTERMEDIATE_DIRECTORY']
+        environment['SOURCE_DIRECTORY'],
+        environment['INTERMEDIATE_DIRECTORY']
     )
 
     # Build a shared library
     platform_specific_library_name = cplusplus.get_platform_specific_library_name(
         universal_library_name
     )
-    return self._environment.SharedLibrary(
+    return environment.SharedLibrary(
         os.path.join(
-            self._environment['INTERMEDIATE_DIRECTORY'],
+            environment['INTERMEDIATE_DIRECTORY'],
             platform_specific_library_name
         ),
         sources

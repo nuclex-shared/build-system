@@ -120,7 +120,7 @@ def find_or_guess_include_directory(package_path):
 
 # ------------------------------------------------------------------------------------------- #
 
-def _find_or_guess_library_directory(environment, library_builds_path):
+def find_or_guess_library_directory(environment, library_builds_path):
     """Tries to locate the library directory for a package
 
     @param  environment          Environment used to look up architecture and compiler
@@ -140,16 +140,18 @@ def _find_or_guess_library_directory(environment, library_builds_path):
         raise FileNotFound("C/C++ compiler could not be found")
 
     major_compiler_version = compiler_version[0]
-    while major_compiler_version > 6: # We don't serve compilers older than this :-)
+    while int(major_compiler_version) > 6: # We don't serve compilers older than this :-)
         library_build_name = _make_build_directory_name(
             environment, compiler_name, compiler_version
         )
         candidate = os.path.join(library_builds_path, library_build_name)
+
+        #print('Trying ' + candidate)
         if os.path.isdir(candidate):
             return candidate
 
         # Also try builds for previous compiler versions
-        major_compiler_version -= 1
+        major_compiler_version = str(int(major_compiler_version) - 1)
 
     candidate = os.path.join(library_builds_path, 'lib')
     if os.path.isdir(candidate):
@@ -204,7 +206,9 @@ def get_compiler_name(environment):
         raise FileNotFound('No C/C++ compiler found')
 
     if (compiler_executable == 'cl') or (compiler_executable == 'icc'):
-        return "msvc"
+        return 'msvc'
+    elif (compiler_executable == 'gcc') or (compiler_executable == 'g++'):
+        return 'gcc'
     else:
         return compiler_executable
 
