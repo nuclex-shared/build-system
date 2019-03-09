@@ -44,6 +44,7 @@ def create_cplusplus_environment():
 
     # Nuclex standard build settings and extensions
     _set_standard_cplusplus_compiler_flags(environment)
+    _set_standard_cplusplus_linker_flags(environment)
     _register_cplusplus_extension_methods(environment)
 
     return environment
@@ -73,8 +74,8 @@ def _parse_default_command_line_options():
         EnumVariable(
             'TARGET_ARCH',
             'CPU architecture the binary will run on',
-            'x64',
-            allowed_values=('x86', 'x64', 'arm', 'any')
+            'amd64',
+            allowed_values=('any', 'amd64', 'x86', 'arm')
         )
     )
 
@@ -138,41 +139,41 @@ def _set_standard_cplusplus_compiler_flags(environment):
     @param  environment  Environment in which the C++ compiler flags wlll be set."""
 
     if platform.system() == 'Linux':
-        environment.Append(CXXFLAGS=['-std=c++14']) # Use a widely supported but current C++
-        environment.Append(CXXFLAGS=['-fvisibility=hidden']) # Default visibility: don't export
-        environment.Append(CXXFLAGS=['-Wpedantic']) # Enable all ISO C++ deviation warnings
-        environment.Append(CXXFLAGS=['-Wall']) # Show all warnings
-        environment.Append(CXXFLAGS=['-Wno-unknown-pragmas']) # Don't warn about #pragma region
+        environment.Append(CXXFLAGS='-std=c++14') # Use a widely supported but current C++
+        environment.Append(CXXFLAGS='-fvisibility=hidden') # Default visibility: don't export
+        environment.Append(CXXFLAGS='-Wpedantic') # Enable all ISO C++ deviation warnings
+        environment.Append(CXXFLAGS='-Wall') # Show all warnings
+        environment.Append(CXXFLAGS='-Wno-unknown-pragmas') # Don't warn about #pragma region
         #environment.Append(CXXFLAGS=['-flinker-output=pie']) # Position-independent executable
-        environment.Append(CXXFLAGS=['-shared-libgcc']) # Show all warnings
+        environment.Append(CXXFLAGS='-shared-libgcc') # Show all warnings
         #environment.Append(CXXFLAGS=['-fpic -fpie]') # Position-independent lib/executable
 
         if _is_debug_build(environment):
-            environment.Append(CXXFLAGS=['-Og']) # Tailor code for optimal debugging
-            environment.Append(CXXFLAGS=['-g']) # Generate debugging information
+            environment.Append(CXXFLAGS='-Og') # Tailor code for optimal debugging
+            environment.Append(CXXFLAGS='-g') # Generate debugging information
         else:
-            environment.Append(CXXFLAGS=['-O3']) # Optimize for speed
+            environment.Append(CXXFLAGS='-O3') # Optimize for speed
 
     else:
-        environment.Append(CXXFLAGS=['/EHsc']) # Only C++ exceptions, no Microsoft exceptions
-        environment.Append(CXXFLAGS=['/GF']) # String pooling in debug and release
-        environment.Append(CXXFLAGS=['/Gv']) # Vectorcall for speed
-        environment.Append(CXXFLAGS=['/utf-8']) # Source code and outputs are UTF-8 encoded
-        environment.Append(CXXFLAGS=['/std:c++14']) # Use a widely supported but current C++
-        environment.Append(CXXFLAGS=['/W4']) # Show all warnings
-        environment.Append(CXXFLAGS=['/GS-']) # No buffer security checks (we make games!)
-        environment.Append(CXXFLAGS=['/GR']) # Generate RTTI for dynamic_cast and type_info
+        environment.Append(CXXFLAGS='/EHsc') # Only C++ exceptions, no Microsoft exceptions
+        environment.Append(CXXFLAGS='/GF') # String pooling in debug and release
+        #environment.Append(CXXFLAGS='/Gv') # Vectorcall for speed
+        environment.Append(CXXFLAGS='/utf-8') # Source code and outputs are UTF-8 encoded
+        environment.Append(CXXFLAGS='/std:c++14') # Use a widely supported but current C++
+        environment.Append(CXXFLAGS='/W4') # Show all warnings
+        environment.Append(CXXFLAGS='/GS-') # No buffer security checks (we make games!)
+        environment.Append(CXXFLAGS='/GR') # Generate RTTI for dynamic_cast and type_info
 
         if _is_debug_build(environment):
-            environment.Append(CXXFLAGS=['/Od']) # No optimization for debugging
-            environment.Append(CXXFLAGS=['/MDd']) # Link shared multithreaded debug runtime
-            environment.Append(CXXFLAGS=['/Zi']) # Generate complete debugging information
+            environment.Append(CXXFLAGS='/Od') # No optimization for debugging
+            environment.Append(CXXFLAGS='/MDd') # Link shared multithreaded debug runtime
+            environment.Append(CXXFLAGS='/Zi') # Generate complete debugging information
         else:
-            environment.Append(CXXFLAGS=['/O2']) # Optimize for speed
-            environment.Append(CXXFLAGS=['/Gy']) # Function-level linking for better trimming
-            environment.Append(CXXFLAGS=['/GL']) # Whole program optimizaton (merged build)
-            environment.Append(CXXFLAGS=['/MD']) # Link shared multithreaded release runtime
-            environment.Append(CXXFLAGS=['/Gw']) # Enable whole-program *data* optimization
+            environment.Append(CXXFLAGS='/O2') # Optimize for speed
+            environment.Append(CXXFLAGS='/Gy') # Function-level linking for better trimming
+            environment.Append(CXXFLAGS='/GL') # Whole program optimizaton (merged build)
+            environment.Append(CXXFLAGS='/MD') # Link shared multithreaded release runtime
+            environment.Append(CXXFLAGS='/Gw') # Enable whole-program *data* optimization
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -182,8 +183,14 @@ def _set_standard_cplusplus_linker_flags(environment):
     @param  environment  Environment in which the C++ compiler linker wlll be set."""
 
     if platform.system() == 'Linux':
-        environment.Append(LINKLAGS=['-z defs']) # Detect unresolved symbols in shared object
-        environment.Append(LINKLAGS=['-Bsymbolic']) # Prevent replacement on shared object syms
+        environment.Append(LINKFLAGS='-z defs') # Detect unresolved symbols in shared object
+        environment.Append(LINKFLAGS='-Bsymbolic') # Prevent replacement on shared object syms
+
+    else:
+        if _is_debug_build(environment):
+        	pass
+        else:
+        	environment.Append(LINKFLAGS='/LTCG') # Prevent replacement on shared object syms
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -327,6 +334,11 @@ def _build_cplusplus_unit_test_executable(environment, universal_executable_name
     platform_specific_executable_name = cplusplus.get_platform_specific_executable_name(
         universal_executable_name
     )
+
+    if platform.system() != 'Linux':
+    	environment = environment.Clone()
+    	environment.Append(LINKFLAGS="/SUBSYSTEM:CONSOLE")
+
     return environment.Program(
         os.path.join(
             environment['INTERMEDIATE_DIRECTORY'],

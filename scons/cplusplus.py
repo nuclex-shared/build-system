@@ -133,26 +133,37 @@ def find_or_guess_library_directory(environment, library_builds_path):
 
     compiler_name = get_compiler_name(environment)
     if compiler_name is None:
-        raise FileNotFound("C/C++ compiler could not be found")
+        raise FileNotFound('C/C++ compiler could not be found')
 
     compiler_version = get_compiler_version(environment)
     if compiler_version is None:
-        raise FileNotFound("C/C++ compiler could not be found")
+        raise FileNotFound('C/C++ compiler could not be found')
 
     major_compiler_version = int(compiler_version[0])
     while major_compiler_version > 6: # We don't serve compilers earlier than this :-)
+
+        # New naming scheme, using only major compiler/toolset version
         library_build_name = _make_build_directory_name(
             environment, compiler_name, str(major_compiler_version)
         )
         candidate = os.path.join(library_builds_path, library_build_name)
 
-        #print('Trying ' + candidate)
+        if os.path.isdir(candidate):
+            return candidate
+
+        # Compatibility with existing naming scheme in externals repository
+        library_build_name = _make_build_directory_name(
+            environment, compiler_name, str(major_compiler_version) + '.0'
+        )
+        candidate = os.path.join(library_builds_path, library_build_name)
+
         if os.path.isdir(candidate):
             return candidate
 
         # Also try builds for previous compiler versions
         major_compiler_version -= 1
 
+    # No compiler-specified binaries, give the 'lib' dir a final try
     candidate = os.path.join(library_builds_path, 'lib')
     if os.path.isdir(candidate):
         return candidate
@@ -205,10 +216,10 @@ def get_compiler_name(environment):
 
     if 'CXX' in environment:
         compiler_executable = environment['CXX']
+        if compiler_executable == "$CC":
+            compiler_executable = environment['CC']
     elif 'CC' in environment:
         compiler_executable = environment['CC']
-        if compiler_executable == "$CC":
-	        compiler_executable = environment['CC']
     else:
         raise FileNotFound('No C/C++ compiler found')
 
@@ -242,6 +253,11 @@ def get_compiler_version(environment):
         if 'MSVC_VERSION' in environment:
             compiler_version = environment['MSVC_VERSION']
             return compiler_version.split('.')
+
+        if 'MSVS' in environment:
+            print(environment['MSVS'])
+            cl_install_directory = environment['MSVS']['VCINSTALLDIR']
+            print(cl_install_directory)
 
         msvc_process = subprocess.Popen(
             [compiler_executable], stdout=subprocess.PIPE
