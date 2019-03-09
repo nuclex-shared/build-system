@@ -113,6 +113,12 @@ def _register_cplusplus_extension_methods(environment):
     environment.build_shared_library = types.MethodType(
         _build_cplusplus_shared_library, environment
     )
+    environment.build_unit_test_executable = types.MethodType(
+        _build_cplusplus_unit_test_executable, environment
+    )
+    environment.run_unit_tests = types.MethodType(
+        _run_cplusplus_unit_tests, environment
+    )
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -269,10 +275,10 @@ def _build_cplusplus_shared_library(environment, universal_library_name):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def build_unit_test_executable(self, universal_executable_name):
+def _build_cplusplus_unit_test_executable(environment, universal_executable_name):
     """Creates a unit test executable
 
-    @param  self                       The instance this method should work on
+    @param  environment             Environment controlling the build settings
     @param  universal_executable_name  Name of the library in universal format
                                        (i.e. 'My.Awesome.Library')
     @remarks
@@ -282,49 +288,48 @@ def build_unit_test_executable(self, universal_executable_name):
         See get_platform_specific_library_name() for how the universal_executable_name
         parameter is used to produce the output filename on different platforms."""
 
-    self._set_standard_compiler_flags()
-
     # Include directories
     # These will automatically be scanned by SCons for changes
-    self.add_include_directory(self._environment['HEADER_DIRECTORY'])
+    environment.add_include_directory(environment['HEADER_DIRECTORY'])
 
     # Use a separate directory for the object files instead of
     # cluttering up the source tree.
-    self._environment.VariantDir(
+    environment.VariantDir(
         os.path.join(
-            self._environment['INTERMEDIATE_DIRECTORY'],
-            self._environment['SOURCE_DIRECTORY']
+            environment['INTERMEDIATE_DIRECTORY'],
+            environment['SOURCE_DIRECTORY']
         ),
-        self._environment['SOURCE_DIRECTORY'],
+        environment['SOURCE_DIRECTORY'],
         duplicate=0
     )
-    self._environment.VariantDir(
+    environment.VariantDir(
         os.path.join(
-            self._environment['INTERMEDIATE_DIRECTORY'],
-            self._environment['TESTS_DIRECTORY']
+            environment['INTERMEDIATE_DIRECTORY'],
+            environment['TESTS_DIRECTORY']
         ),
-        self._environment['TESTS_DIRECTORY'],
+        environment['TESTS_DIRECTORY'],
         duplicate=0
     )
 
     sources = cplusplus.enumerate_sources(
-        self._environment['SOURCE_DIRECTORY'],
-        self._environment['INTERMEDIATE_DIRECTORY']
+        environment['SOURCE_DIRECTORY'],
+        environment['INTERMEDIATE_DIRECTORY']
     )
     tests = cplusplus.enumerate_sources(
-        self._environment['TESTS_DIRECTORY'],
-        self._environment['INTERMEDIATE_DIRECTORY']
+        environment['TESTS_DIRECTORY'],
+        environment['INTERMEDIATE_DIRECTORY']
     )
 
-    self.add_package('gtest', ['gtest', 'gtest_main'])
+    # For C/C++ we use GoogleTest by convention. Add the GoogleTest library.
+    environment.add_package('gtest', ['gtest', 'gtest_main'])
 
     # Build the unit test executable
     platform_specific_executable_name = cplusplus.get_platform_specific_executable_name(
         universal_executable_name
     )
-    return self._environment.Program(
+    return environment.Program(
         os.path.join(
-            self._environment['INTERMEDIATE_DIRECTORY'],
+            environment['INTERMEDIATE_DIRECTORY'],
             platform_specific_executable_name
         ),
         sources + tests
@@ -332,10 +337,10 @@ def build_unit_test_executable(self, universal_executable_name):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def run_unit_tests(self, universal_executable_name):
+def _run_cplusplus_unit_tests(environment, universal_executable_name):
     """Runs the unit tests executable comiled from a build_unit_test_executable() call
 
-    @param  self                       The instance this method should work on
+    @param  environment                Environment providing paths for the unit test executable
     @param  universal_executable_name  Name of the unit test executable from the build step
     @remarks
         This executes the unit test executable and produces an XML file detailing
@@ -346,16 +351,16 @@ def run_unit_tests(self, universal_executable_name):
         universal_executable_name
     )
     test_executable_path = os.path.join(
-        self._environment['INTERMEDIATE_DIRECTORY'],
+        environment['INTERMEDIATE_DIRECTORY'],
         platform_specific_executable_name
     )
 
     test_results_path = os.path.join(
-        self._environment['ARTIFACT_DIRECTORY'],
-        self._environment['TESTS_RESULT_FILE']
+        environment['ARTIFACT_DIRECTORY'],
+        environment['TESTS_RESULT_FILE']
     )
 
-    return self._environment.Command(
+    return environment.Command(
         source = test_executable_path,
         action = test_executable_path + ' --gtest_output=xml:' + test_results_path,
         target = test_results_path

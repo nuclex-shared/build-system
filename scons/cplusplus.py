@@ -207,6 +207,8 @@ def get_compiler_name(environment):
         compiler_executable = environment['CXX']
     elif 'CC' in environment:
         compiler_executable = environment['CC']
+        if compiler_executable == "$CC":
+	        compiler_executable = environment['CC']
     else:
         raise FileNotFound('No C/C++ compiler found')
 
@@ -225,7 +227,7 @@ def get_compiler_version(environment):
     @param  environment  Environment from which the C/C++ compiler executable will be looked up
     @returns The compiler version number, as an array of [Major, Minor, Revision]"""
 
-    #compiler_executable = None
+    compiler_executable = None
 
     if 'CXX' in environment:
         compiler_executable = environment['CXX']
@@ -237,7 +239,6 @@ def get_compiler_version(environment):
         raise FileNotFound('No C/C++ compiler found')
 
     if (compiler_executable == 'cl') or (compiler_executable == 'icc'):
-
         if 'MSVC_VERSION' in environment:
             compiler_version = environment['MSVC_VERSION']
             return compiler_version.split('.')
@@ -248,6 +249,7 @@ def get_compiler_version(environment):
         (stdout, stderr) = msvc_process.communicate()
 
         compiler_version = re.search('[0-9][0-9.]*', stdout)
+
     else:
         gcc_process = subprocess.Popen(
             [compiler_executable, '--version'], stdout=subprocess.PIPE
