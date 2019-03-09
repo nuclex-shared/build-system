@@ -139,10 +139,10 @@ def find_or_guess_library_directory(environment, library_builds_path):
     if compiler_version is None:
         raise FileNotFound("C/C++ compiler could not be found")
 
-    major_compiler_version = compiler_version[0]
-    while int(major_compiler_version) > 6: # We don't serve compilers older than this :-)
+    major_compiler_version = int(compiler_version[0])
+    while major_compiler_version > 6: # We don't serve compilers earlier than this :-)
         library_build_name = _make_build_directory_name(
-            environment, compiler_name, compiler_version
+            environment, compiler_name, str(major_compiler_version)
         )
         candidate = os.path.join(library_builds_path, library_build_name)
 
@@ -151,7 +151,7 @@ def find_or_guess_library_directory(environment, library_builds_path):
             return candidate
 
         # Also try builds for previous compiler versions
-        major_compiler_version = str(int(major_compiler_version) - 1)
+        major_compiler_version -= 1
 
     candidate = os.path.join(library_builds_path, 'lib')
     if os.path.isdir(candidate):
@@ -196,6 +196,11 @@ def get_platform_specific_executable_name(universal_executable_name):
 # ----------------------------------------------------------------------------------------------- #
 
 def get_compiler_name(environment):
+    """Returns a short string identifying the compiler (or compiler group) being used
+
+    @param  environment  Environment from which the compiler will be looked up
+    @returns The name of the compiler (or shared name of a group compilers) being used"""
+
     compiler_executable = None
 
     if 'CXX' in environment:
@@ -282,7 +287,7 @@ def _get_build_directory_name(environment):
     if compiler_version is None:
         raise FileNotFound("C/C++ compiler could not be found")
 
-    return _make_build_directory_name(environment, compiler_name, compiler_version)
+    return _make_build_directory_name(environment, compiler_name, compiler_version[0])
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -292,7 +297,7 @@ def _make_build_directory_name(environment, compiler_name, compiler_version):
 
     @param  environment       Environment providing additional build settings
     @param  compiler_name     Name of the compiler that is being used
-    @param  compiler_version  Version number of the compiler that is being used
+    @param  compiler_version  Major version number of the compiler that is being used
     @returns The build directory name for the specified compiler and architecture"""
 
     architecture = _get_architecture_or_default(environment)
@@ -305,7 +310,7 @@ def _make_build_directory_name(environment, compiler_name, compiler_version):
 
     return (
         compiler_name + '-' +
-        compiler_version[0] + '-' +
+        compiler_version + '-' +
         architecture + '-' +
         build_configuration
     )
