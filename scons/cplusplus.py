@@ -5,10 +5,34 @@ import shutil
 import platform
 import subprocess
 import re
+import types
 
 """
 Helpers for building C/C++ projects with SCons
 """
+
+# ----------------------------------------------------------------------------------------------- #
+
+def register_extension_methods(environment):
+    """Registers extensions methods for C/C++ builds into a SCons environment
+
+    @param  environment  Environment the extension methods will be registered to"""
+
+    environment.add_include_directory = types.MethodType(
+        _add_include_directory, environment
+    )
+    environment.add_library_directory = types.MethodType(
+        _add_library_directory, environment
+    )
+    environment.add_library = types.MethodType(
+        _add_library, environment
+    )
+    environment.add_package = types.MethodType(
+        _add_package, environment
+    )
+    environment.get_build_directory_name = types.MethodType(
+        _get_build_directory_name, environment
+    )
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -76,37 +100,65 @@ def enumerate_sources(source_directory, variant_directory = ""):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def add_include_directory(environment, include_directory):
-    """Adds an include directory to a C++ build environment
+def find_or_guess_include_directory(package_path):
+    """Tries to locate the include directory for a package
 
-    @param  environment        Environment the include directory will be added to
-    @param  include_directory  Include directory that will be added to the environment"""
+    @param  self          The instance this method should work on
+    @param  package_path  Path to the package"""
 
-    environment.Append(CPPPATH=[include_directory])
+    candidate = os.path.join(package_path, 'include')
+    if os.path.isdir(candidate):
+        return candidate
 
-# ----------------------------------------------------------------------------------------------- #
+    candidate = os.path.join(package_path, 'Include')
+    if os.path.isdir(candidate):
+        return candidate
 
-def add_library_directory(environment, library_directory):
-    """Adds a library directory to a C++ build environment
+    package_name = os.path.basename(os.path.normpath(package_path))
+    candidate = os.path.join(package_path, package_name)
+    if os.path.isdir(candidate):
+        return candidate
 
-    @param  environment        Environment the library directory will be added to
-    @param  library_directory  Library directory that will be added to the environment"""
+    return None
 
-    environment.Append(LIBPATH=[library_directory])
+# ------------------------------------------------------------------------------------------- #
 
-# ----------------------------------------------------------------------------------------------- #
+def _find_or_guess_library_directory(environment, library_builds_path):
+    """Tries to locate the library directory for a package
 
-def add_library(environment, library_name):
-    """Adds a library to a C++ build environment
-
-    @param  environment   Environment the library will be added to
-    @param  library_name  Library that will be added to the environment
+    @param  environment          Environment used to look up architecture and compiler
+    @param  library_builds_path  Path to the directory containing the library builds
+                                 Each build is expected to be in a directory matching
+                                 the build directory name (_get_build_directory_name())
     @remarks
-      The libary name is platform-specific. On Windows systems, the library is usually
-      called MyAwesomeThing.lib while on GNU/Linux systems, the convention is
-      libMyAwesomeThing.so (the toolchain will automatically try the lib prefix, though)"""
+        This can be used to automatically find the directory in which precompiled
+        library binaries are stored."""
 
-    environment.Append(LIBS=[library_name])
+    compiler_name = get_compiler_name(environment)
+    if compiler_name is None:
+        raise FileNotFound("C/C++ compiler could not be found")
+
+    compiler_version = get_compiler_version(environment)
+    if compiler_version is None:
+        raise FileNotFound("C/C++ compiler could not be found")
+
+    major_compiler_version = compiler_version[0]
+    while major_compiler_version > 6: # We don't serve compilers older than this :-)
+        library_build_name = _make_build_directory_name(
+            environment, compiler_name, compiler_version
+        )
+        candidate = os.path.join(library_builds_path, library_build_name)
+        if os.path.isdir(candidate):
+            return candidate
+
+        # Also try builds for previous compiler versions
+        major_compiler_version -= 1
+
+    candidate = os.path.join(library_builds_path, 'lib')
+    if os.path.isdir(candidate):
+        return candidate
+
+    return None
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -144,47 +196,190 @@ def get_platform_specific_executable_name(universal_executable_name):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def get_platform_library_directory(architecture, build_type):
-    """Determines the name of the library directory for the current compiler version
-    and output settings (such as platform and whether it's a debug or release build)
+def get_compiler_name(environment):
+    compiler_executable = None
 
-    @param  build_type    Type of build, typically either 'debug' or 'release'
-                          Microsoft calls this a build configuration
-    @param  architecture  CPU architecture the build is targeting, i.e. x86, x64 or arm"""
-
-    if platform.system() == 'Linux':
-        gcc_version = _find_gcc_compiler_version()
-        if gcc_version is None:
-            raise FileNotFoundError('No GCC compiler found')
-
-        return "gcc-" + gcc_version[0] + '-' + architecture + '-' + build_type
+    if 'CXX' in environment:
+        compiler_executable = environment['CXX']
+    elif 'CC' in environment:
+        compiler_executable = environment['CC']
     else:
-        return 'msvc-14.0-' + architecture + '-' + build_type
+        raise FileNotFound('No C/C++ compiler found')
+
+    if (compiler_executable == 'cl') or (compiler_executable == 'icc'):
+        return "msvc"
+    else:
+        return compiler_executable
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _find_gcc_compiler_version(compiler_executable = 'gcc'):
-    """Extracts the version number of a C/C++ compiler (like GCC) as a list of strings.
+def get_compiler_version(environment):
+    """Determines the version number of the C/C++ compiler being used
 
-    @param  compiler_execuable  Executable for the selected compiler (usually just gcc)
-    @returns The compiler version number"""
+    @param  environment  Environment from which the C/C++ compiler executable will be looked up
+    @returns The compiler version number, as an array of [Major, Minor, Revision]"""
 
-    gcc_process = subprocess.Popen(
-        [compiler_executable, '--version'], stdout=subprocess.PIPE
-    )
-    (stdout, stderr) = gcc_process.communicate()
+    #compiler_executable = None
 
-    match = re.search('[0-9][0-9.]*', stdout)
+    if 'CXX' in environment:
+        compiler_executable = environment['CXX']
+        if compiler_executable == "$CC":
+	        compiler_executable = environment['CC']
+    elif 'CC' in environment:
+        compiler_executable = environment['CC']
+    else:
+        raise FileNotFound('No C/C++ compiler found')
+
+    if (compiler_executable == 'cl') or (compiler_executable == 'icc'):
+
+        if 'MSVC_VERSION' in environment:
+            compiler_version = environment['MSVC_VERSION']
+            return compiler_version.split('.')
+
+        msvc_process = subprocess.Popen(
+            [compiler_executable], stdout=subprocess.PIPE
+        )
+        (stdout, stderr) = msvc_process.communicate()
+
+        compiler_version = re.search('[0-9][0-9.]*', stdout)
+    else:
+        gcc_process = subprocess.Popen(
+            [compiler_executable, '--version'], stdout=subprocess.PIPE
+        )
+        (stdout, stderr) = gcc_process.communicate()
+
+        compiler_version = re.search('[0-9][0-9.]*', stdout)
 
     # If no match is found the compiler didn't proide the expected output
     # and we have no idea which version it might be
-    if match is None:
+    if compiler_version is None:
         return None
 
-    version = match.group().split('.')
+    version = compiler_version.group().split('.')
     return version
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _find_msvc_compiler_version(compiler_executable = 'cl.exe'):
+def _get_build_directory_name(environment):
+    """Determines the name of the build directory for the current compiler version
+    and output settings (such as platform and whether it's a debug or release build)
+
+    @param  environment  Environment for which the build directory will be determined
+    @returns The name the build directory should have
+    @remarks
+        The build directory is a directory whose name uniquely identifies the compiler,
+        platform and build configuration used. When shipping cross-platform libraries,
+        for example, a compiled binary of the library can be shipped for each compiler,
+        architecture and build configuration supported, allowing developers to pick
+        the right one to link depending on their system."""
+
+    compiler_name = get_compiler_name(environment)
+    if compiler_name is None:
+        raise FileNotFound("C/C++ compiler could not be found")
+
+    compiler_version = get_compiler_version(environment)
+    if compiler_version is None:
+        raise FileNotFound("C/C++ compiler could not be found")
+
+    return _make_build_directory_name(environment, compiler_name, compiler_version)
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _make_build_directory_name(environment, compiler_name, compiler_version):
+    """Forms the build directory name given a compiler name, compiler version,
+    target architecture and build configuration.
+
+    @param  environment       Environment providing additional build settings
+    @param  compiler_name     Name of the compiler that is being used
+    @param  compiler_version  Version number of the compiler that is being used
+    @returns The build directory name for the specified compiler and architecture"""
+
+    architecture = _get_architecture_or_default(environment)
+    is_debug_build = 'DEBUG' in environment
+
+    if is_debug_build:
+        build_configuration = 'debug'
+    else:
+        build_configuration = 'release'
+
+    return (
+        compiler_name + '-' +
+        compiler_version[0] + '-' +
+        architecture + '-' +
+        build_configuration
+    )
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _get_architecture_or_default(environment):
+    """Returns the current target architecture or the default architecture if none
+    has been explicitly set.
+
+    @param  environment  Environment the target architecture will be looked up from
+    @returns The name of the target architecture from the environment or a default"""
+
+    architecture = environment['TARGET_ARCH']
+    if architecture is None:
+        return 'x64'
+    else:
+        return architecture
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _add_include_directory(environment, include_directory):
+    """Adds an C/C++ include directory to the build
+
+    @param  environment        Environment the C/C++ include directory will be added to
+    @param  include_directory  Include directory that will be added
+    @remarks
+        Consider using add_package() instead to automatically set up all include and
+        library directories as well as link the libraries themselves."""
+
+    environment.Append(CPPPATH=[include_directory])
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _add_library_directory(environment, library_directory):
+    """Adds a C/C++ library directory to the build
+
+    @param  environment        Environment the C/C++ library directory will be added to
+    @param  library_directory  Library directory that will be added
+    @remarks
+        Consider using add_package() instead to automatically set up all include and
+        library directories as well as link the libraries themselves."""
+
+    environment.Append(LIBPATH=[library_directory])
+
+# ------------------------------------------------------------------------------------------- #
+
+def _add_library(environment, library_name):
+    """Adds a C/C++ library to the build
+
+    @param  environment   Environment the C/C++ library will be linked to
+    @param  library_name  Name of the library that will be linked
+    @remarks
+        Consider using add_package() instead to automatically set up all include and
+        library directories as well as link the libraries themselves.
+
+        The libary name is platform-specific. On Windows systems, the library is usually
+        called MyAwesomeThing.lib while on GNU/Linux systems, the convention is
+        libMyAwesomeThing.so (the toolchain will automatically try the lib prefix, though)"""
+
+    environment.Append(LIBS=[library_name])
+
+# ------------------------------------------------------------------------------------------- #
+
+def _add_package(environment, package_name, universal_library_names = None):
+    """Adds a precompiled package consisting of some header files and a code library
+    to the current build.
+
+    @param  self                     The instance this method should work on
+    @param  universal_package_name   Name of the package that will be added to the build
+    @param  universal_library_names  Names of libraries (inside the package) that need to
+                                     be linked.
+    @remarks
+        If no universal_library_names are given, a library with the same name as
+        the package is assumed. The universal_library_name can be used if a package
+        offers multiple linkable library (i.e. boost modules, gtest + gtest_main)"""
     pass
+
