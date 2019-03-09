@@ -27,9 +27,6 @@ def register_extension_methods(environment):
     environment.add_library = types.MethodType(
         _add_library, environment
     )
-    environment.add_package = types.MethodType(
-        _add_package, environment
-    )
     environment.get_build_directory_name = types.MethodType(
         _get_build_directory_name, environment
     )
@@ -366,20 +363,3 @@ def _add_library(environment, library_name):
         libMyAwesomeThing.so (the toolchain will automatically try the lib prefix, though)"""
 
     environment.Append(LIBS=[library_name])
-
-# ------------------------------------------------------------------------------------------- #
-
-def _add_package(environment, package_name, universal_library_names = None):
-    """Adds a precompiled package consisting of some header files and a code library
-    to the current build.
-
-    @param  self                     The instance this method should work on
-    @param  universal_package_name   Name of the package that will be added to the build
-    @param  universal_library_names  Names of libraries (inside the package) that need to
-                                     be linked.
-    @remarks
-        If no universal_library_names are given, a library with the same name as
-        the package is assumed. The universal_library_name can be used if a package
-        offers multiple linkable library (i.e. boost modules, gtest + gtest_main)"""
-    pass
-
