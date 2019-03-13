@@ -61,13 +61,13 @@ def _parse_default_command_line_options():
     command_line_variables = Variables(None, ARGUMENTS)
 
     # Build configuration (also called build type in many SCons examples)
-#    command_line_variables.Add(
-#        BoolVariable(
-#            'DEBUG',
-#            'Whether to do an unoptimized debug build',
-#            'debug'
-#        )
-#    )
+    command_line_variables.Add(
+        BoolVariable(
+            'DEBUG',
+            'Whether to do an unoptimized debug build',
+            False
+        )
+    )
 
     # CPU architecture to target
     command_line_variables.Add(
@@ -108,18 +108,11 @@ def _register_cplusplus_extension_methods(environment):
 
     @param  environment  Environment the extension methods will be registered to"""
 
-    environment.add_package = types.MethodType(
-        _add_cplusplus_package, environment
-    )
-    environment.build_shared_library = types.MethodType(
-        _build_cplusplus_shared_library, environment
-    )
-    environment.build_unit_test_executable = types.MethodType(
-        _build_cplusplus_unit_test_executable, environment
-    )
-    environment.run_unit_tests = types.MethodType(
-        _run_cplusplus_unit_tests, environment
-    )
+    environment.AddMethod(_add_cplusplus_package, "add_package")
+    environment.AddMethod(_build_cplusplus_library, "build_library")
+    environment.AddMethod(_build_cplusplus_library_with_tests, "build_library_with_tests")
+    environment.AddMethod(_build_cplusplus_executable, "build_executable")
+    environment.AddMethod(_run_cplusplus_unit_tests, "run_unit_tests")
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -129,7 +122,10 @@ def _is_debug_build(environment):
     @param  environment  Environment whose settings will be checked for a debug build
     @returns True if a debug build has been requested, otherwise False"""
 
-    return 'DEBUG' in environment
+    if 'DEBUG' in environment:
+        return environment['DEBUG']
+    else:
+        return False
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -138,23 +134,7 @@ def _set_standard_cplusplus_compiler_flags(environment):
 
     @param  environment  Environment in which the C++ compiler flags wlll be set."""
 
-    if platform.system() == 'Linux':
-        environment.Append(CXXFLAGS='-std=c++14') # Use a widely supported but current C++
-        environment.Append(CXXFLAGS='-fvisibility=hidden') # Default visibility: don't export
-        environment.Append(CXXFLAGS='-Wpedantic') # Enable all ISO C++ deviation warnings
-        environment.Append(CXXFLAGS='-Wall') # Show all warnings
-        environment.Append(CXXFLAGS='-Wno-unknown-pragmas') # Don't warn about #pragma region
-        #environment.Append(CXXFLAGS=['-flinker-output=pie']) # Position-independent executable
-        environment.Append(CXXFLAGS='-shared-libgcc') # Show all warnings
-        #environment.Append(CXXFLAGS=['-fpic -fpie]') # Position-independent lib/executable
-
-        if _is_debug_build(environment):
-            environment.Append(CXXFLAGS='-Og') # Tailor code for optimal debugging
-            environment.Append(CXXFLAGS='-g') # Generate debugging information
-        else:
-            environment.Append(CXXFLAGS='-O3') # Optimize for speed
-
-    else:
+    if platform.system() == 'Windows':
         environment.Append(CXXFLAGS='/EHsc') # Only C++ exceptions, no Microsoft exceptions
         environment.Append(CXXFLAGS='/GF') # String pooling in debug and release
         #environment.Append(CXXFLAGS='/Gv') # Vectorcall for speed
@@ -175,6 +155,22 @@ def _set_standard_cplusplus_compiler_flags(environment):
             environment.Append(CXXFLAGS='/MD') # Link shared multithreaded release runtime
             environment.Append(CXXFLAGS='/Gw') # Enable whole-program *data* optimization
 
+    else:
+        environment.Append(CXXFLAGS='-std=c++14') # Use a widely supported but current C++
+        environment.Append(CXXFLAGS='-fvisibility=hidden') # Default visibility: don't export
+        environment.Append(CXXFLAGS='-Wpedantic') # Enable all ISO C++ deviation warnings
+        environment.Append(CXXFLAGS='-Wall') # Show all warnings
+        environment.Append(CXXFLAGS='-Wno-unknown-pragmas') # Don't warn about #pragma region
+        #environment.Append(CXXFLAGS=['-flinker-output=pie']) # Position-independent executable
+        environment.Append(CXXFLAGS='-shared-libgcc') # Show all warnings
+        #environment.Append(CXXFLAGS=['-fpic -fpie]') # Position-independent lib/executable
+
+        if _is_debug_build(environment):
+            environment.Append(CXXFLAGS='-Og') # Tailor code for optimal debugging
+            environment.Append(CXXFLAGS='-g') # Generate debugging information
+        else:
+            environment.Append(CXXFLAGS='-O3') # Optimize for speed
+
 # ----------------------------------------------------------------------------------------------- #
 
 def _set_standard_cplusplus_linker_flags(environment):
@@ -182,15 +178,16 @@ def _set_standard_cplusplus_linker_flags(environment):
 
     @param  environment  Environment in which the C++ compiler linker wlll be set."""
 
-    if platform.system() == 'Linux':
-        environment.Append(LINKFLAGS='-z defs') # Detect unresolved symbols in shared object
-        environment.Append(LINKFLAGS='-Bsymbolic') # Prevent replacement on shared object syms
+    if platform.system() == 'Windows':
+        if _is_debug_build(environment):
+            pass
+        else:
+            environment.Append(LINKFLAGS='/LTCG') # Prevent replacement on shared object syms
+            environment.Append(LIBFLAGS='/LTCG') # Prevent replacement on shared object syms
 
     else:
-        if _is_debug_build(environment):
-        	pass
-        else:
-        	environment.Append(LINKFLAGS='/LTCG') # Prevent replacement on shared object syms
+        environment.Append(LINKFLAGS='-z defs') # Detect unresolved symbols in shared object
+        environment.Append(LINKFLAGS='-Bsymbolic') # Prevent replacement on shared object syms
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -235,7 +232,7 @@ def _add_cplusplus_package(environment, universal_package_name, universal_librar
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _build_cplusplus_shared_library(environment, universal_library_name):
+def _build_cplusplus_library(environment, universal_library_name):
     """Creates a shared C/C++ library
 
     @param  environment             Environment controlling the build settings
@@ -248,104 +245,155 @@ def _build_cplusplus_shared_library(environment, universal_library_name):
         See get_platform_specific_library_name() for how the universal_library_name parameter
         is used to produce the output filename on different platforms."""
 
+    environment = environment.Clone()
+
     # Include directories
     # These will automatically be scanned by SCons for changes
     environment.add_include_directory(environment['HEADER_DIRECTORY'])
 
-    # Use a separate directory for the object files instead of
-    # cluttering up the source tree.
-    environment.VariantDir(
-        os.path.join(
-            environment['INTERMEDIATE_DIRECTORY'],
-            environment['SOURCE_DIRECTORY']
-        ),
-        environment['SOURCE_DIRECTORY'],
-        duplicate=0
-    )
-
-    sources = cplusplus.enumerate_sources(
-        environment['SOURCE_DIRECTORY'],
-        environment['INTERMEDIATE_DIRECTORY']
+    # Recursively search for the source code files
+    sources = _add_variantdir_and_enumerate_cplusplus_sources(
+        environment, environment['SOURCE_DIRECTORY']
     )
 
     # Build a shared library
-    platform_specific_library_name = cplusplus.get_platform_specific_library_name(
-        universal_library_name
-    )
+    library_name = cplusplus.get_platform_specific_library_name(universal_library_name)
     return environment.SharedLibrary(
-        os.path.join(
-            environment['INTERMEDIATE_DIRECTORY'],
-            platform_specific_library_name
-        ),
+        _put_in_intermediate_path(environment, library_name),
         sources
     )
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _build_cplusplus_unit_test_executable(environment, universal_executable_name):
-    """Creates a unit test executable
+def _build_cplusplus_executable(environment, universal_executable_name, console = False):
+    """Creates a vanilla C/C++ executable
 
-    @param  environment             Environment controlling the build settings
-    @param  universal_executable_name  Name of the library in universal format
-                                       (i.e. 'My.Awesome.Library')
+    @param  environment                Environment controlling the build settings
+    @param  universal_executable_name  Name of the executable in universal format
+                                       (i.e. 'My.Awesome.App')
+    @param  console                    Whether to build a shell/command line executable
     @remarks
         Assumes the default conventions, i.e. all source code is contained in a directory
         named 'Source' and all headers in a directory named 'Include'.
 
-        See get_platform_specific_library_name() for how the universal_executable_name
+        See get_platform_specific_executable_name() for how the universal_library_name
         parameter is used to produce the output filename on different platforms."""
+
+    environment = environment.Clone()
 
     # Include directories
     # These will automatically be scanned by SCons for changes
     environment.add_include_directory(environment['HEADER_DIRECTORY'])
 
-    # Use a separate directory for the object files instead of
-    # cluttering up the source tree.
-    environment.VariantDir(
-        os.path.join(
-            environment['INTERMEDIATE_DIRECTORY'],
-            environment['SOURCE_DIRECTORY']
-        ),
-        environment['SOURCE_DIRECTORY'],
-        duplicate=0
-    )
-    environment.VariantDir(
-        os.path.join(
-            environment['INTERMEDIATE_DIRECTORY'],
-            environment['TESTS_DIRECTORY']
-        ),
-        environment['TESTS_DIRECTORY'],
-        duplicate=0
+    # Recursively search for the source code files
+    sources = _add_variantdir_and_enumerate_cplusplus_sources(
+        environment, environment['SOURCE_DIRECTORY']
     )
 
-    sources = cplusplus.enumerate_sources(
-        environment['SOURCE_DIRECTORY'],
-        environment['INTERMEDIATE_DIRECTORY']
-    )
-    tests = cplusplus.enumerate_sources(
-        environment['TESTS_DIRECTORY'],
-        environment['INTERMEDIATE_DIRECTORY']
-    )
+    # On Windows, there is a distinguishment between console (shell) applications
+    # and GUI applications. Add the appropriate flag if needed.
+    if (platform.system() == 'Windows') and console:
+        environment.Append(LINKFLAGS="/SUBSYSTEM:CONSOLE")
 
-    # For C/C++ we use GoogleTest by convention. Add the GoogleTest library.
-    environment.add_package('gtest', ['gtest', 'gtest_main'])
-
-    # Build the unit test executable
-    platform_specific_executable_name = cplusplus.get_platform_specific_executable_name(
-        universal_executable_name
-    )
-
-    if platform.system() != 'Linux':
-    	environment = environment.Clone()
-    	environment.Append(LINKFLAGS="/SUBSYSTEM:CONSOLE")
-
+    # Build the executable
+    executable_name = cplusplus.get_platform_specific_executable_name(universal_executable_name)
     return environment.Program(
-        os.path.join(
-            environment['INTERMEDIATE_DIRECTORY'],
-            platform_specific_executable_name
-        ),
-        sources + tests
+        _put_in_intermediate_path(enviroment, executable_name),
+        sources
     )
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _build_cplusplus_library_with_tests(
+    environment, universal_library_name, universal_test_executable_name
+):
+    """Creates a C/C++ shared library and also builds a unit test executable or it
+
+    @param  environment                Environment controlling the build settings
+    @param  universal_executable_name  Name of the library in universal format
+                                       (i.e. 'My.Awesome.Stuff')
+    @remarks
+        Assumes the default conventions, i.e. all source code is contained in a directory
+        named 'Source' and all headers in a directory named 'Include'.
+
+        In addition to the convenience factor, this method also avoids SCons warnings about
+        two environments producing the same intermediate files (or having to compile everything
+        twice) by first building a static library, then producing a shared library from it
+        and producing the unit test executabel from it together with the unit test sources.
+
+        See get_platform_specific_executable_name() for how the universal_library_name
+        parameter is used to produce the output filename on different platforms."""
+
+    # Recursively search for the source code files
+    sources = _add_variantdir_and_enumerate_cplusplus_sources(
+        environment, environment['SOURCE_DIRECTORY']
+    )
+    test_sources = _add_variantdir_and_enumerate_cplusplus_sources(
+        environment, environment['TESTS_DIRECTORY']
+    )
+    intermediate_directory = os.path.join(
+        environment['INTERMEDIATE_DIRECTORY'],
+        environment.get_build_directory_name()
+    )
+
+    # Build a static library that we can reuse for the shared library and test executable
+    if True:
+        intermediate_library_name = cplusplus.get_platform_specific_library_name(
+            universal_library_name + ".Static", static = True
+        )
+        intermediate_library_path = _put_in_intermediate_path(
+            environment, intermediate_library_name
+        )
+
+        staticlib_environment = environment.Clone();
+        staticlib_environment.add_include_directory(environment['HEADER_DIRECTORY'])
+
+        compile_static_library = staticlib_environment.StaticLibrary(
+            intermediate_library_path, sources
+        )
+
+    # Build a shared library using nothing but the static library for sources
+    if True:
+        sources = []
+        if platform.system() == 'Windows': # aka if my.compiler.sucks():
+            dummy_path = _put_in_intermediate_path(environment, 'msvc-dllmain-dummy.cpp')
+            open(dummy_path, 'a').close()
+            sources.append(dummy_path)
+
+        library_name = cplusplus.get_platform_specific_library_name(universal_library_name)
+        library_path = _put_in_intermediate_path(environment, library_name)
+
+        sharedlib_environment = environment.Clone();
+        sharedlib_environment.add_include_directory(environment['HEADER_DIRECTORY'])
+
+        sharedlib_environment.add_library_directory(intermediate_directory)
+        sharedlib_environment.add_library(intermediate_library_name)
+
+        compile_shared_library = sharedlib_environment.SharedLibrary(library_path, sources)
+
+    if True:
+        executable_name = cplusplus.get_platform_specific_executable_name(
+            universal_test_executable_name
+        )
+        executable_path = _put_in_intermediate_path(environment, executable_name)
+
+        executable_environment = environment.Clone()
+        executable_environment.add_include_directory(environment['HEADER_DIRECTORY'])
+
+        executable_environment.add_library_directory(intermediate_directory)
+        executable_environment.add_library(intermediate_library_name)
+
+        executable_environment.add_package('gtest', [ 'gtest', 'gtest_main' ])
+
+        if platform.system() == 'Windows':
+            executable_environment.Append(LINKFLAGS="/SUBSYSTEM:CONSOLE")
+
+        compile_unit_tests = executable_environment.Program(executable_path, test_sources)
+
+    environment.Depends(compile_shared_library, compile_static_library)
+    environment.Depends(compile_unit_tests, compile_static_library)
+
+    return compile_shared_library
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -379,3 +427,59 @@ def _run_cplusplus_unit_tests(environment, universal_executable_name):
     )
 
 # ----------------------------------------------------------------------------------------------- #
+
+def _add_variantdir_and_enumerate_cplusplus_sources(environment, directory):
+    """Sets up a variant directory for a set of sources and enumerates the sources
+    with their paths when compiled to the variant directory.
+
+    @param  environment  Environment the variant directory will be set up in
+    @param  directory    Directory containing the sources that will be enumerated
+    @returns The list of source files in their virtual variant dir locations"""
+
+    # Append the build directory. This directory is unique per build setup,
+    # so that debug/release and x86/amd64 builds can life side by side or happen
+    # in parallel.
+    intermediate_build_directory = os.path.join(
+        environment['INTERMEDIATE_DIRECTORY'],
+        environment.get_build_directory_name()
+    )
+    variant_directory = os.path.join(intermediate_build_directory, directory)
+
+    # Set up the variant directory so that object files get stored separately
+    environment.VariantDir(variant_directory, directory, duplicate = 0)
+
+    # Recursively search for the source code files
+    return cplusplus.enumerate_sources(directory, intermediate_build_directory)
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _put_in_intermediate_path(environment, filename):
+    """Determines the intermediate path for a file with the specified name
+
+    @param  environment  Environment for which the intermediate path will be determined
+    @param  filename     Filename for which the intermediate path will be returned
+    @returns The intermediate path for a file with the specified name"""
+
+    intermediate_directory = os.path.join(
+        environment['INTERMEDIATE_DIRECTORY'],
+        environment.get_build_directory_name()
+    )
+
+    return os.path.join(intermediate_directory, filename)
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _put_in_artifact_path(environment, filename):
+    """Determines the artifact path for a file with the specified name
+
+    @param  environment  Environment for which the artifact path will be determined
+    @param  filename     Filename for which the artifact path will be returned
+    @returns The artifact path for a file with the specified name"""
+
+    artifact_directory = os.path.join(
+        environment['ARTIFACT_DIRECTORY'],
+        environment.get_build_directory_name()
+    )
+
+    return os.path.join(artifact_directory, filename)
+

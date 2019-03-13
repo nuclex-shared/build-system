@@ -18,22 +18,14 @@ def register_extension_methods(environment):
 
     @param  environment  Environment the extension methods will be registered to"""
 
-    environment.add_include_directory = types.MethodType(
-        _add_include_directory, environment
-    )
-    environment.add_library_directory = types.MethodType(
-        _add_library_directory, environment
-    )
-    environment.add_library = types.MethodType(
-        _add_library, environment
-    )
-    environment.get_build_directory_name = types.MethodType(
-        _get_build_directory_name, environment
-    )
+    environment.AddMethod(_add_include_directory, "add_include_directory")
+    environment.AddMethod(_add_library_directory, "add_library_directory")
+    environment.AddMethod(_add_library, "add_library")
+    environment.AddMethod(_get_build_directory_name, "get_build_directory_name")
 
 # ----------------------------------------------------------------------------------------------- #
 
-def enumerate_headers(header_directory, variant_directory = ""):
+def enumerate_headers(header_directory, variant_directory = None):
     """Forms a list of all C/C++ header files in an include directory
 
     @param  header_directory     Directory containing the headers
@@ -56,16 +48,16 @@ def enumerate_headers(header_directory, variant_directory = ""):
         for file_name in file_names:
             file_title, file_extension = os.path.splitext(file_name)
             if any(file_extension in s for s in source_file_extensions):
-                if variant_directory:
-                    headers.append(os.path.join(variant_directory, os.path.join(root, file_name)))
-                else:
+                if variant_directory is None:
                     headers.append(os.path.join(root, file_name))
+                else:
+                    headers.append(os.path.join(variant_directory, os.path.join(root, file_name)))
 
     return headers
 
 # ----------------------------------------------------------------------------------------------- #
 
-def enumerate_sources(source_directory, variant_directory = ""):
+def enumerate_sources(source_directory, variant_directory = None):
     """Forms a list of all C/C++ source code files in a source directory
 
     @param  source_directory     Directory containing the C/C++ source code files
@@ -88,10 +80,10 @@ def enumerate_sources(source_directory, variant_directory = ""):
         for file_name in file_names:
             file_title, file_extension = os.path.splitext(file_name)
             if any(file_extension in s for s in source_file_extensions):
-                if variant_directory:
-                    sources.append(os.path.join(variant_directory, os.path.join(root, file_name)))
-                else:
+                if variant_directory is None:
                     sources.append(os.path.join(root, file_name))
+                else:
+                    sources.append(os.path.join(variant_directory, os.path.join(root, file_name)))
 
     return sources
 
@@ -172,10 +164,11 @@ def find_or_guess_library_directory(environment, library_builds_path):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def get_platform_specific_library_name(universal_library_name):
+def get_platform_specific_library_name(universal_library_name, static = False):
     """Forms the platform-specific library name from a universal library name
 
     @param  universal_library_name  Universal name of the library that will be converted
+    @param  static                  Whether the name is for a static library
     @returns The platform-specific library name
     @remarks
       A universal library name is just the name of the library without extension,
@@ -183,9 +176,19 @@ def get_platform_specific_library_name(universal_library_name):
       this might get turned into My.Awesome.Stuff.dll or libMyAwesomeStuff.so"""
 
     if platform.system() == 'Linux':
-        return 'lib' + universal_library_name.replace('.', '') + ".so"
+
+        # Because Linux tools automatically add 'lib' and '.a'/'.so'
+        return universal_library_name.replace('.', '')
+
+        if static:
+            return 'lib' + universal_library_name.replace('.', '') + '.a'
+        else:
+            return 'lib' + universal_library_name.replace('.', '') + '.so'
     else:
-        return universal_library_name + ".dll"
+        if static:
+            return universal_library_name + ".lib"
+        else:
+            return universal_library_name + ".dll"
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -319,7 +322,10 @@ def _make_build_directory_name(environment, compiler_name, compiler_version):
     @returns The build directory name for the specified compiler and architecture"""
 
     architecture = _get_architecture_or_default(environment)
-    is_debug_build = 'DEBUG' in environment
+
+    is_debug_build = False
+    if 'DEBUG' in environment:
+        is_debug_build = environment['DEBUG']
 
     if is_debug_build:
         build_configuration = 'debug'
