@@ -170,6 +170,7 @@ def _set_standard_cplusplus_compiler_flags(environment):
             environment.Append(CXXFLAGS='-g') # Generate debugging information
         else:
             environment.Append(CXXFLAGS='-O3') # Optimize for speed
+            environment.Append(CXXFLAGS='-flto') # Merge all code before compiling
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -182,8 +183,8 @@ def _set_standard_cplusplus_linker_flags(environment):
         if _is_debug_build(environment):
             pass
         else:
-            environment.Append(LINKFLAGS='/LTCG') # Prevent replacement on shared object syms
-            environment.Append(LIBFLAGS='/LTCG') # Prevent replacement on shared object syms
+            environment.Append(LINKFLAGS='/LTCG') # Merge all code before compiling
+            environment.Append(LIBFLAGS='/LTCG') # Merge all code before compiling
 
     else:
         environment.Append(LINKFLAGS='-z defs') # Detect unresolved symbols in shared object
@@ -232,12 +233,16 @@ def _add_cplusplus_package(environment, universal_package_name, universal_librar
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _build_cplusplus_library(environment, universal_library_name):
+def _build_cplusplus_library(
+  environment, universal_library_name, static = False, sources = None
+):
     """Creates a shared C/C++ library
 
     @param  environment             Environment controlling the build settings
     @param  universal_library_name  Name of the library in universal format
                                     (i.e. 'My.Awesome.Stuff')
+    @param  static                  Whether to build a static library (default: no)
+    @param  sources                 Source files to use (None = auto)
     @remarks
         Assumes the default conventions, i.e. all source code is contained in a directory
         named 'Source' and all headers in a directory named 'Include'.
@@ -252,26 +257,39 @@ def _build_cplusplus_library(environment, universal_library_name):
     environment.add_include_directory(environment['HEADER_DIRECTORY'])
 
     # Recursively search for the source code files
-    sources = _add_variantdir_and_enumerate_cplusplus_sources(
-        environment, environment['SOURCE_DIRECTORY']
-    )
+    if sources is None:
+        sources = _add_variantdir_and_enumerate_cplusplus_sources(
+            environment, environment['SOURCE_DIRECTORY']
+        )
+
+    if platform.system() != 'Windows':
+        environment.Append(CXXFLAGS='-fpic') # Use position-independent code
 
     # Build a shared library
-    library_name = cplusplus.get_platform_specific_library_name(universal_library_name)
-    return environment.SharedLibrary(
-        _put_in_intermediate_path(environment, library_name),
-        sources
-    )
+    library_name = cplusplus.get_platform_specific_library_name(universal_library_name, static)
+    if static:
+        return environment.StaticLibrary(
+            _put_in_intermediate_path(environment, library_name),
+            sources
+        )
+    else:
+        return environment.SharedLibrary(
+            _put_in_intermediate_path(environment, library_name),
+            sources
+        )
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _build_cplusplus_executable(environment, universal_executable_name, console = False):
+def _build_cplusplus_executable(
+    environment, universal_executable_name, console = False, sources = None
+):
     """Creates a vanilla C/C++ executable
 
     @param  environment                Environment controlling the build settings
     @param  universal_executable_name  Name of the executable in universal format
                                        (i.e. 'My.Awesome.App')
     @param  console                    Whether to build a shell/command line executable
+    @param  sources                    Source files to use (None = auto)
     @remarks
         Assumes the default conventions, i.e. all source code is contained in a directory
         named 'Source' and all headers in a directory named 'Include'.
@@ -286,14 +304,19 @@ def _build_cplusplus_executable(environment, universal_executable_name, console 
     environment.add_include_directory(environment['HEADER_DIRECTORY'])
 
     # Recursively search for the source code files
-    sources = _add_variantdir_and_enumerate_cplusplus_sources(
-        environment, environment['SOURCE_DIRECTORY']
-    )
+    if sources is None:
+        sources = _add_variantdir_and_enumerate_cplusplus_sources(
+            environment, environment['SOURCE_DIRECTORY']
+        )
 
     # On Windows, there is a distinguishment between console (shell) applications
     # and GUI applications. Add the appropriate flag if needed.
     if (platform.system() == 'Windows') and console:
         environment.Append(LINKFLAGS="/SUBSYSTEM:CONSOLE")
+
+    if platform.system() != 'Windows':
+        environment.Append(CXXFLAGS='-fpic') # Use position-independent code
+        environment.Append(CXXFLAGS='-fpie') # Use position-independent code
 
     # Build the executable
     executable_name = cplusplus.get_platform_specific_executable_name(universal_executable_name)
@@ -305,13 +328,16 @@ def _build_cplusplus_executable(environment, universal_executable_name, console 
 # ----------------------------------------------------------------------------------------------- #
 
 def _build_cplusplus_library_with_tests(
-    environment, universal_library_name, universal_test_executable_name
+    environment, universal_library_name, universal_test_executable_name,
+    sources = None, test_sources = None
 ):
     """Creates a C/C++ shared library and also builds a unit test executable or it
 
     @param  environment                Environment controlling the build settings
     @param  universal_executable_name  Name of the library in universal format
                                        (i.e. 'My.Awesome.Stuff')
+    @param  sources                    Source files to use (None = auto)
+    @param  test_sources               Source files to use for the unit tests (None = auto)
     @remarks
         Assumes the default conventions, i.e. all source code is contained in a directory
         named 'Source' and all headers in a directory named 'Include'.
@@ -325,12 +351,16 @@ def _build_cplusplus_library_with_tests(
         parameter is used to produce the output filename on different platforms."""
 
     # Recursively search for the source code files
-    sources = _add_variantdir_and_enumerate_cplusplus_sources(
-        environment, environment['SOURCE_DIRECTORY']
-    )
-    test_sources = _add_variantdir_and_enumerate_cplusplus_sources(
-        environment, environment['TESTS_DIRECTORY']
-    )
+    if sources is None:
+        sources = _add_variantdir_and_enumerate_cplusplus_sources(
+            environment, environment['SOURCE_DIRECTORY']
+        )
+
+    if test_sources is None:
+        test_sources = _add_variantdir_and_enumerate_cplusplus_sources(
+            environment, environment['TESTS_DIRECTORY']
+        )
+
     intermediate_directory = os.path.join(
         environment['INTERMEDIATE_DIRECTORY'],
         environment.get_build_directory_name()
@@ -347,6 +377,9 @@ def _build_cplusplus_library_with_tests(
 
         staticlib_environment = environment.Clone();
         staticlib_environment.add_include_directory(environment['HEADER_DIRECTORY'])
+
+        if platform.system() != 'Windows':
+            staticlib_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
 
         compile_static_library = staticlib_environment.StaticLibrary(
             intermediate_library_path, sources
@@ -369,6 +402,9 @@ def _build_cplusplus_library_with_tests(
         sharedlib_environment.add_library_directory(intermediate_directory)
         sharedlib_environment.add_library(intermediate_library_name)
 
+        if platform.system() != 'Windows':
+            sharedlib_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
+
         compile_shared_library = sharedlib_environment.SharedLibrary(library_path, sources)
 
     if True:
@@ -384,6 +420,10 @@ def _build_cplusplus_library_with_tests(
         executable_environment.add_library(intermediate_library_name)
 
         executable_environment.add_package('gtest', [ 'gtest', 'gtest_main' ])
+
+        if platform.system() != 'Windows':
+            executable_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
+            executable_environment.Append(CXXFLAGS='-fpie') # Use position-independent code
 
         if platform.system() == 'Windows':
             executable_environment.Append(LINKFLAGS="/SUBSYSTEM:CONSOLE")
