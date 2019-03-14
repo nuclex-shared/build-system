@@ -419,9 +419,10 @@ def _build_cplusplus_library_with_tests(
         executable_environment.add_library_directory(intermediate_directory)
         executable_environment.add_library(intermediate_library_name)
 
-        executable_environment.add_package('gtest', [ 'gtest', 'gtest_main' ])
+        executable_environment.add_package('googletest', [ 'googletest', 'googletest_main' ])
 
         if platform.system() != 'Windows':
+            executable_environment.add_library('pthread') # Needed by googletest
             executable_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
             executable_environment.Append(CXXFLAGS='-fpie') # Use position-independent code
 
@@ -437,27 +438,27 @@ def _build_cplusplus_library_with_tests(
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _run_cplusplus_unit_tests(environment, universal_executable_name):
+def _run_cplusplus_unit_tests(environment, universal_test_executable_name):
     """Runs the unit tests executable comiled from a build_unit_test_executable() call
 
-    @param  environment                Environment providing paths for the unit test executable
-    @param  universal_executable_name  Name of the unit test executable from the build step
+    @param  environment                     Environment used to locate the unit test executable
+    @param  universal_test_executable_name  Name of the unit test executable from the build step
     @remarks
         This executes the unit test executable and produces an XML file detailing
         the test results for CI servers and other processing."""
 
+    environment = environment.Clone()
+
     # Figure out the path the unit tests executable would have been compiled to
-    platform_specific_executable_name = cplusplus.get_platform_specific_executable_name(
-        universal_executable_name
+    test_executable_name = cplusplus.get_platform_specific_executable_name(
+        universal_test_executable_name
     )
-    test_executable_path = os.path.join(
-        environment['INTERMEDIATE_DIRECTORY'],
-        platform_specific_executable_name
+    test_executable_path = _put_in_intermediate_path(
+        environment, test_executable_name
     )
 
-    test_results_path = os.path.join(
-        environment['ARTIFACT_DIRECTORY'],
-        environment['TESTS_RESULT_FILE']
+    test_results_path = _put_in_artifact_path(
+        environment, environment['TESTS_RESULT_FILE']
     )
 
     return environment.Command(
