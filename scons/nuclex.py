@@ -421,18 +421,19 @@ def _build_cplusplus_library_with_tests(
 
         executable_environment.add_package('googletest', [ 'googletest', 'googletest_main' ])
 
-        if platform.system() != 'Windows':
+        if platform.system() == 'Windows':
+            executable_environment.Append(LINKFLAGS="/SUBSYSTEM:CONSOLE")
+        else:
             executable_environment.add_library('pthread') # Needed by googletest
             executable_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
             executable_environment.Append(CXXFLAGS='-fpie') # Use position-independent code
-
-        if platform.system() == 'Windows':
-            executable_environment.Append(LINKFLAGS="/SUBSYSTEM:CONSOLE")
 
         compile_unit_tests = executable_environment.Program(executable_path, test_sources)
 
     environment.Depends(compile_shared_library, compile_static_library)
     environment.Depends(compile_unit_tests, compile_static_library)
+
+    print("@@@ " + str(compile_unit_tests))
 
     return compile_shared_library
 
@@ -463,7 +464,7 @@ def _run_cplusplus_unit_tests(environment, universal_test_executable_name):
 
     return environment.Command(
         source = test_executable_path,
-        action = test_executable_path + ' --gtest_output=xml:' + test_results_path,
+        action = '$SOURCE --gtest_output=xml:$TARGET',
         target = test_results_path
     )
 
@@ -523,4 +524,3 @@ def _put_in_artifact_path(environment, filename):
     )
 
     return os.path.join(artifact_directory, filename)
-
