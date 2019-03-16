@@ -256,11 +256,10 @@ def _build_cplusplus_library(
     # These will automatically be scanned by SCons for changes
     environment.add_include_directory(environment['HEADER_DIRECTORY'])
 
-    # Recursively search for the source code files
-    if sources is None:
-        sources = _add_variantdir_and_enumerate_cplusplus_sources(
-            environment, environment['SOURCE_DIRECTORY']
-        )
+    # Recursively search for the source code files or transform the existing file list
+    sources = _add_variantdir_and_enumerate_cplusplus_sources(
+        environment, environment['SOURCE_DIRECTORY'], sources
+    )
 
     if platform.system() != 'Windows':
         environment.Append(CXXFLAGS='-fpic') # Use position-independent code
@@ -303,11 +302,10 @@ def _build_cplusplus_executable(
     # These will automatically be scanned by SCons for changes
     environment.add_include_directory(environment['HEADER_DIRECTORY'])
 
-    # Recursively search for the source code files
-    if sources is None:
-        sources = _add_variantdir_and_enumerate_cplusplus_sources(
-            environment, environment['SOURCE_DIRECTORY']
-        )
+    # Recursively search for the source code files or transform the existing file list
+    sources = _add_variantdir_and_enumerate_cplusplus_sources(
+        environment, environment['SOURCE_DIRECTORY'], sources
+    )
 
     # On Windows, there is a distinguishment between console (shell) applications
     # and GUI applications. Add the appropriate flag if needed.
@@ -350,16 +348,13 @@ def _build_cplusplus_library_with_tests(
         See get_platform_specific_executable_name() for how the universal_library_name
         parameter is used to produce the output filename on different platforms."""
 
-    # Recursively search for the source code files
-    if sources is None:
-        sources = _add_variantdir_and_enumerate_cplusplus_sources(
-            environment, environment['SOURCE_DIRECTORY']
-        )
-
-    if test_sources is None:
-        test_sources = _add_variantdir_and_enumerate_cplusplus_sources(
-            environment, environment['TESTS_DIRECTORY']
-        )
+    # Recursively search for the source code files or transform the existing file list
+    sources = _add_variantdir_and_enumerate_cplusplus_sources(
+        environment, environment['SOURCE_DIRECTORY'], sources
+    )
+    test_sources = _add_variantdir_and_enumerate_cplusplus_sources(
+        environment, environment['TESTS_DIRECTORY'], test_sources
+    )
 
     intermediate_directory = os.path.join(
         environment['INTERMEDIATE_DIRECTORY'],
@@ -470,12 +465,14 @@ def _run_cplusplus_unit_tests(environment, universal_test_executable_name):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _add_variantdir_and_enumerate_cplusplus_sources(environment, directory):
+def _add_variantdir_and_enumerate_cplusplus_sources(environment, directory, sources = None):
     """Sets up a variant directory for a set of sources and enumerates the sources
     with their paths when compiled to the variant directory.
 
     @param  environment  Environment the variant directory will be set up in
     @param  directory    Directory containing the sources that will be enumerated
+    @param  sources      User-provided list of source files to transform instead
+                         If this is 'None', the directory will be enumerated.
     @returns The list of source files in their virtual variant dir locations"""
 
     # Append the build directory. This directory is unique per build setup,
@@ -490,8 +487,21 @@ def _add_variantdir_and_enumerate_cplusplus_sources(environment, directory):
     # Set up the variant directory so that object files get stored separately
     environment.VariantDir(variant_directory, directory, duplicate = 0)
 
-    # Recursively search for the source code files
-    return cplusplus.enumerate_sources(directory, intermediate_build_directory)
+    if sources is None:
+
+        # Recursively search for the source code files
+        return cplusplus.enumerate_sources(directory, intermediate_build_directory)
+
+    else:
+
+        new_sources = []
+
+        for file_path in sources:
+            new_sources.append(
+                os.path.join(intermediate_build_directory, file_path)
+            )
+
+        return new_sources
 
 # ----------------------------------------------------------------------------------------------- #
 
