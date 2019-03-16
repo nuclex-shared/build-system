@@ -143,6 +143,7 @@ def _set_standard_cplusplus_compiler_flags(environment):
         environment.Append(CXXFLAGS='/W4') # Show all warnings
         environment.Append(CXXFLAGS='/GS-') # No buffer security checks (we make games!)
         environment.Append(CXXFLAGS='/GR') # Generate RTTI for dynamic_cast and type_info
+        environment.Append(CXXFLAGS='/FS') # Generate RTTI for dynamic_cast and type_info
 
         if _is_debug_build(environment):
             environment.Append(CXXFLAGS='/Od') # No optimization for debugging
@@ -183,6 +184,7 @@ def _set_standard_cplusplus_linker_flags(environment):
         if _is_debug_build(environment):
             pass
         else:
+            print("ADDED THE SHIT")
             environment.Append(LINKFLAGS='/LTCG') # Merge all code before compiling
             environment.Append(LIBFLAGS='/LTCG') # Merge all code before compiling
 
@@ -260,22 +262,22 @@ def _build_cplusplus_library(
     sources = _add_variantdir_and_enumerate_cplusplus_sources(
         environment, environment['SOURCE_DIRECTORY'], sources
     )
+    library_path = _put_in_intermediate_path(
+        environment, cplusplus.get_platform_specific_library_name(universal_library_name, static)
+    )
 
-    if platform.system() != 'Windows':
+    if platform.system() == 'Windows':
+        environment.Append(
+            CXXFLAGS='/Fd"' + os.path.splitext(library_path)[0] + '.pdb"'
+        )
+    else:
         environment.Append(CXXFLAGS='-fpic') # Use position-independent code
 
     # Build a shared library
-    library_name = cplusplus.get_platform_specific_library_name(universal_library_name, static)
     if static:
-        return environment.StaticLibrary(
-            _put_in_intermediate_path(environment, library_name),
-            sources
-        )
+        return environment.StaticLibrary(library_path, sources)
     else:
-        return environment.SharedLibrary(
-            _put_in_intermediate_path(environment, library_name),
-            sources
-        )
+        return environment.SharedLibrary(library_path, sources)
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -306,22 +308,23 @@ def _build_cplusplus_executable(
     sources = _add_variantdir_and_enumerate_cplusplus_sources(
         environment, environment['SOURCE_DIRECTORY'], sources
     )
+    executable_path = _put_in_intermediate_path(
+        environment, cplusplus.get_platform_specific_executable_name(universal_executable_name)
+    )
 
     # On Windows, there is a distinguishment between console (shell) applications
     # and GUI applications. Add the appropriate flag if needed.
     if (platform.system() == 'Windows') and console:
-        environment.Append(LINKFLAGS="/SUBSYSTEM:CONSOLE")
-
-    if platform.system() != 'Windows':
+        environment.Append(LINKFLAGS='/SUBSYSTEM:CONSOLE')
+        environment.Append(
+            CXXFLAGS='/Fd"' + os.path.splitext(executable_path)[0] + '.pdb"'
+        )
+    else:
         environment.Append(CXXFLAGS='-fpic') # Use position-independent code
         environment.Append(CXXFLAGS='-fpie') # Use position-independent code
 
     # Build the executable
-    executable_name = cplusplus.get_platform_specific_executable_name(universal_executable_name)
-    return environment.Program(
-        _put_in_intermediate_path(enviroment, executable_name),
-        sources
-    )
+    return environment.Program(executable_path, sources)
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -373,7 +376,11 @@ def _build_cplusplus_library_with_tests(
         staticlib_environment = environment.Clone();
         staticlib_environment.add_include_directory(environment['HEADER_DIRECTORY'])
 
-        if platform.system() != 'Windows':
+        if platform.system() == 'Windows':
+            environment.Append(
+                CXXFLAGS='/Fd"' + os.path.splitext(intermediate_library_path)[0] + '.pdb"'
+            )
+        else:
             staticlib_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
 
         compile_static_library = staticlib_environment.StaticLibrary(
@@ -397,7 +404,11 @@ def _build_cplusplus_library_with_tests(
         sharedlib_environment.add_library_directory(intermediate_directory)
         sharedlib_environment.add_library(intermediate_library_name)
 
-        if platform.system() != 'Windows':
+        if platform.system() == 'Windows':
+            environment.Append(
+                CXXFLAGS='/Fd"' + os.path.splitext(library_path)[0] + '.pdb"'
+            )
+        else:
             sharedlib_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
 
         compile_shared_library = sharedlib_environment.SharedLibrary(library_path, sources)
@@ -418,6 +429,9 @@ def _build_cplusplus_library_with_tests(
 
         if platform.system() == 'Windows':
             executable_environment.Append(LINKFLAGS="/SUBSYSTEM:CONSOLE")
+            environment.Append(
+                CXXFLAGS='/Fd"' + os.path.splitext(executable_path)[0] + '.pdb"'
+            )
         else:
             executable_environment.add_library('pthread') # Needed by googletest
             executable_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
@@ -427,8 +441,6 @@ def _build_cplusplus_library_with_tests(
 
     environment.Depends(compile_shared_library, compile_static_library)
     environment.Depends(compile_unit_tests, compile_static_library)
-
-    print("@@@ " + str(compile_unit_tests))
 
     return compile_shared_library
 
