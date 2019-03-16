@@ -321,6 +321,11 @@ def _make_build_directory_name(environment, compiler_name, compiler_version):
     @param  compiler_version  Major version number of the compiler that is being used
     @returns The build directory name for the specified compiler and architecture"""
 
+    if platform.system() == 'Windows':
+        platform_name = 'windows'
+    else:
+        platform_name = 'linux'
+
     architecture = _get_architecture_or_default(environment)
 
     is_debug_build = False
@@ -333,8 +338,8 @@ def _make_build_directory_name(environment, compiler_name, compiler_version):
         build_configuration = 'release'
 
     return (
-        compiler_name + '-' +
-        compiler_version + '-' +
+        platform_name + '-' +
+        compiler_name + compiler_version + '-' +
         architecture + '-' +
         build_configuration
     )
