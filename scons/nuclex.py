@@ -11,7 +11,7 @@ from SCons.Variables import EnumVariable
 from SCons.Variables import PathVariable
 from SCons.Variables import BoolVariable
 from SCons.Script import ARGUMENTS
-#from SCons.Script.SConscript import SConsEnvironment
+from SCons.Script import Dir
 
 # Nuclex SCons libraries
 shared = importlib.import_module('shared')
@@ -184,7 +184,6 @@ def _set_standard_cplusplus_linker_flags(environment):
         if _is_debug_build(environment):
             pass
         else:
-            print("ADDED THE SHIT")
             environment.Append(LINKFLAGS='/LTCG') # Merge all code before compiling
             environment.Append(LIBFLAGS='/LTCG') # Merge all code before compiling
 
@@ -364,6 +363,8 @@ def _build_cplusplus_library_with_tests(
         environment.get_build_directory_name()
     )
 
+    base_directory = Dir('.').abspath # Necessary if this is running inside env.SConscript()
+
     # Build a static library that we can reuse for the shared library and test executable
     if True:
         intermediate_library_name = cplusplus.get_platform_specific_library_name(
@@ -375,10 +376,11 @@ def _build_cplusplus_library_with_tests(
 
         staticlib_environment = environment.Clone();
         staticlib_environment.add_include_directory(environment['HEADER_DIRECTORY'])
+        #staticlib_environment['PDB'] = os.path.splitext(intermediate_library_path)[0] + '.pdb"'
 
         if platform.system() == 'Windows':
-            environment.Append(
-                CXXFLAGS='/Fd"' + os.path.splitext(intermediate_library_path)[0] + '.pdb"'
+            staticlib_environment.Append(
+                CXXFLAGS='/Fd"' + os.path.join(base_directory, os.path.splitext(intermediate_library_path)[0] + '.pdb"')
             )
         else:
             staticlib_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
@@ -389,29 +391,35 @@ def _build_cplusplus_library_with_tests(
 
     # Build a shared library using nothing but the static library for sources
     if True:
-        sources = []
-        if platform.system() == 'Windows': # aka if my.compiler.sucks():
-            dummy_path = _put_in_intermediate_path(environment, 'msvc-dllmain-dummy.cpp')
-            open(dummy_path, 'a').close()
-            sources.append(dummy_path)
+        sources = [] # We don't use any sources but the static library from above
 
         library_name = cplusplus.get_platform_specific_library_name(universal_library_name)
         library_path = _put_in_intermediate_path(environment, library_name)
 
         sharedlib_environment = environment.Clone();
         sharedlib_environment.add_include_directory(environment['HEADER_DIRECTORY'])
+        #sharedlib_environment['PDB'] = os.path.splitext(library_path)[0] + '.pdb"'
 
         sharedlib_environment.add_library_directory(intermediate_directory)
         sharedlib_environment.add_library(intermediate_library_name)
 
         if platform.system() == 'Windows':
-            environment.Append(
-                CXXFLAGS='/Fd"' + os.path.splitext(library_path)[0] + '.pdb"'
+            sharedlib_environment.Append(
+                CXXFLAGS='/Fd"' + os.path.join(base_directory, os.path.splitext(library_path)[0] + '.pdb"')
             )
+            dummy_path = _put_in_intermediate_path(environment, 'msvc-dllmain-dummy.cpp')
+            sources.append(dummy_path)
+            create_dummy_file = sharedlib_environment.Command(
+                source = [], action = 'echo // > $TARGET', target = dummy_path
+            )
+
+            compile_shared_library = sharedlib_environment.SharedLibrary(library_path, sources)
+            sharedlib_environment.Depends(compile_shared_library, create_dummy_file)
+
         else:
             sharedlib_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
+            compile_shared_library = sharedlib_environment.SharedLibrary(library_path, sources)
 
-        compile_shared_library = sharedlib_environment.SharedLibrary(library_path, sources)
 
     if True:
         executable_name = cplusplus.get_platform_specific_executable_name(
@@ -421,16 +429,17 @@ def _build_cplusplus_library_with_tests(
 
         executable_environment = environment.Clone()
         executable_environment.add_include_directory(environment['HEADER_DIRECTORY'])
+        #executable_environment['PDB'] = os.path.splitext(executable_path)[0] + '.pdb"'
 
         executable_environment.add_library_directory(intermediate_directory)
         executable_environment.add_library(intermediate_library_name)
 
-        executable_environment.add_package('googletest', [ 'googletest', 'googletest_main' ])
+        executable_environment.add_package('gtest', [ 'gtest', 'gtest_main' ])
 
         if platform.system() == 'Windows':
             executable_environment.Append(LINKFLAGS="/SUBSYSTEM:CONSOLE")
-            environment.Append(
-                CXXFLAGS='/Fd"' + os.path.splitext(executable_path)[0] + '.pdb"'
+            executable_environment.Append(
+                CXXFLAGS='/Fd"' + os.path.join(base_directory, os.path.splitext(executable_path)[0] + '.pdb"')
             )
         else:
             executable_environment.add_library('pthread') # Needed by googletest
@@ -442,7 +451,7 @@ def _build_cplusplus_library_with_tests(
     environment.Depends(compile_shared_library, compile_static_library)
     environment.Depends(compile_unit_tests, compile_static_library)
 
-    return compile_shared_library
+    return [ compile_shared_library, compile_unit_tests ]
 
 # ----------------------------------------------------------------------------------------------- #
 

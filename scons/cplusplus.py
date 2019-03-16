@@ -258,9 +258,9 @@ def get_compiler_version(environment):
             return compiler_version.split('.')
 
         if 'MSVS' in environment:
-            print(environment['MSVS'])
+            #print(environment['MSVS'])
             cl_install_directory = environment['MSVS']['VCINSTALLDIR']
-            print(cl_install_directory)
+            #print(cl_install_directory)
 
         msvc_process = subprocess.Popen(
             [compiler_executable], stdout=subprocess.PIPE
