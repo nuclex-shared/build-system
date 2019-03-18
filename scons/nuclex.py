@@ -143,18 +143,35 @@ def _set_standard_cplusplus_compiler_flags(environment):
         environment.Append(CXXFLAGS='/W4') # Show all warnings
         environment.Append(CXXFLAGS='/GS-') # No buffer security checks (we make games!)
         environment.Append(CXXFLAGS='/GR') # Generate RTTI for dynamic_cast and type_info
-        environment.Append(CXXFLAGS='/FS') # Generate RTTI for dynamic_cast and type_info
+        environment.Append(CXXFLAGS='/FS') # Support shared writing to the PDB file
+
+        environment.Append(CFLAGS='/GF') # String pooling in debug and release
+        #environment.Append(CFLAGS='/Gv') # Vectorcall for speed
+        environment.Append(CFLAGS='/utf-8') # Source code and outputs are UTF-8 encoded
+        environment.Append(CFLAGS='/W4') # Show all warnings
+        environment.Append(CFLAGS='/GS-') # No buffer security checks (we make games!)
+        environment.Append(CFLAGS='/FS') # Support shared writing to the PDB file
 
         if _is_debug_build(environment):
             environment.Append(CXXFLAGS='/Od') # No optimization for debugging
             environment.Append(CXXFLAGS='/MDd') # Link shared multithreaded debug runtime
             environment.Append(CXXFLAGS='/Zi') # Generate complete debugging information
+
+            environment.Append(CFLAGS='/Od') # No optimization for debugging
+            environment.Append(CFLAGS='/MDd') # Link shared multithreaded debug runtime
+            environment.Append(CFLAGS='/Zi') # Generate complete debugging information
         else:
             environment.Append(CXXFLAGS='/O2') # Optimize for speed
             environment.Append(CXXFLAGS='/Gy') # Function-level linking for better trimming
             environment.Append(CXXFLAGS='/GL') # Whole program optimizaton (merged build)
             environment.Append(CXXFLAGS='/MD') # Link shared multithreaded release runtime
             environment.Append(CXXFLAGS='/Gw') # Enable whole-program *data* optimization
+
+            environment.Append(CFLAGS='/O2') # Optimize for speed
+            environment.Append(CFLAGS='/Gy') # Function-level linking for better trimming
+            environment.Append(CFLAGS='/GL') # Whole program optimizaton (merged build)
+            environment.Append(CFLAGS='/MD') # Link shared multithreaded release runtime
+            environment.Append(CFLAGS='/Gw') # Enable whole-program *data* optimization
 
     else:
         environment.Append(CXXFLAGS='-std=c++14') # Use a widely supported but current C++
@@ -164,14 +181,26 @@ def _set_standard_cplusplus_compiler_flags(environment):
         environment.Append(CXXFLAGS='-Wno-unknown-pragmas') # Don't warn about #pragma region
         #environment.Append(CXXFLAGS=['-flinker-output=pie']) # Position-independent executable
         environment.Append(CXXFLAGS='-shared-libgcc') # Show all warnings
-        #environment.Append(CXXFLAGS=['-fpic -fpie]') # Position-independent lib/executable
+
+        environment.Append(CFLAGS='-fvisibility=hidden') # Default visibility: don't export
+        environment.Append(CFLAGS='-Wpedantic') # Enable all ISO C++ deviation warnings
+        environment.Append(CFLAGS='-Wall') # Show all warnings
+        environment.Append(CFLAGS='-Wno-unknown-pragmas') # Don't warn about #pragma region
+        #environment.Append(CFLAGS=['-flinker-output=pie']) # Position-independent executable
+        environment.Append(CFLAGS='-shared-libgcc') # Show all warnings
 
         if _is_debug_build(environment):
             environment.Append(CXXFLAGS='-Og') # Tailor code for optimal debugging
             environment.Append(CXXFLAGS='-g') # Generate debugging information
+
+            environment.Append(CFLAGS='-Og') # Tailor code for optimal debugging
+            environment.Append(CFLAGS='-g') # Generate debugging information
         else:
             environment.Append(CXXFLAGS='-O3') # Optimize for speed
             environment.Append(CXXFLAGS='-flto') # Merge all code before compiling
+
+            environment.Append(CFLAGS='-O3') # Optimize for speed
+            environment.Append(CFLAGS='-flto') # Merge all code before compiling
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -269,8 +298,12 @@ def _build_cplusplus_library(
         environment.Append(
             CXXFLAGS='/Fd"' + os.path.splitext(library_path)[0] + '.pdb"'
         )
+        environment.Append(
+            CFLAGS='/Fd"' + os.path.splitext(library_path)[0] + '.pdb"'
+        )
     else:
         environment.Append(CXXFLAGS='-fpic') # Use position-independent code
+        environment.Append(CFLAGS='-fpic') # Use position-independent code
 
     # Build a shared library
     if static:
@@ -318,9 +351,14 @@ def _build_cplusplus_executable(
         environment.Append(
             CXXFLAGS='/Fd"' + os.path.splitext(executable_path)[0] + '.pdb"'
         )
+        environment.Append(
+            CFLAGS='/Fd"' + os.path.splitext(executable_path)[0] + '.pdb"'
+        )
     else:
         environment.Append(CXXFLAGS='-fpic') # Use position-independent code
         environment.Append(CXXFLAGS='-fpie') # Use position-independent code
+        environment.Append(CFLAGS='-fpic') # Use position-independent code
+        environment.Append(CFLAGS='-fpie') # Use position-independent code
 
     # Build the executable
     return environment.Program(executable_path, sources)
@@ -382,8 +420,12 @@ def _build_cplusplus_library_with_tests(
             staticlib_environment.Append(
                 CXXFLAGS='/Fd"' + os.path.join(base_directory, os.path.splitext(intermediate_library_path)[0] + '.pdb"')
             )
+            staticlib_environment.Append(
+                CFLAGS='/Fd"' + os.path.join(base_directory, os.path.splitext(intermediate_library_path)[0] + '.pdb"')
+            )
         else:
             staticlib_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
+            staticlib_environment.Append(CFLAGS='-fpic') # Use position-independent code
 
         compile_static_library = staticlib_environment.StaticLibrary(
             intermediate_library_path, sources
@@ -407,6 +449,9 @@ def _build_cplusplus_library_with_tests(
             sharedlib_environment.Append(
                 CXXFLAGS='/Fd"' + os.path.join(base_directory, os.path.splitext(library_path)[0] + '.pdb"')
             )
+            sharedlib_environment.Append(
+                CFLAGS='/Fd"' + os.path.join(base_directory, os.path.splitext(library_path)[0] + '.pdb"')
+            )
             dummy_path = _put_in_intermediate_path(environment, 'msvc-dllmain-dummy.cpp')
             sources.append(dummy_path)
             create_dummy_file = sharedlib_environment.Command(
@@ -418,6 +463,7 @@ def _build_cplusplus_library_with_tests(
 
         else:
             sharedlib_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
+            sharedlib_environment.Append(CFLAGS='-fpic') # Use position-independent code
             compile_shared_library = sharedlib_environment.SharedLibrary(library_path, sources)
 
 
@@ -441,10 +487,15 @@ def _build_cplusplus_library_with_tests(
             executable_environment.Append(
                 CXXFLAGS='/Fd"' + os.path.join(base_directory, os.path.splitext(executable_path)[0] + '.pdb"')
             )
+            executable_environment.Append(
+                CFLAGS='/Fd"' + os.path.join(base_directory, os.path.splitext(executable_path)[0] + '.pdb"')
+            )
         else:
             executable_environment.add_library('pthread') # Needed by googletest
             executable_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
             executable_environment.Append(CXXFLAGS='-fpie') # Use position-independent code
+            executable_environment.Append(CFLAGS='-fpic') # Use position-independent code
+            executable_environment.Append(CFLAGS='-fpie') # Use position-independent code
 
         compile_unit_tests = executable_environment.Program(executable_path, test_sources)
 
