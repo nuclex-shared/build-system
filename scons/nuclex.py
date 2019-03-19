@@ -531,7 +531,7 @@ def _run_cplusplus_unit_tests(environment, universal_test_executable_name):
 
     return environment.Command(
         source = test_executable_path,
-        action = '$SOURCE --gtest_output=xml:$TARGET',
+        action = '-$SOURCE --gtest_output=xml:$TARGET',
         target = test_results_path
     )
 
