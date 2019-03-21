@@ -3,6 +3,7 @@
 import os
 import shutil
 import platform
+import xml.etree.ElementTree as ET
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -50,7 +51,7 @@ _windows_visual_studio_batch_paths = [
 ]
 
 # Default version of MSBuild we will use
-_default_msbuild_version = 'latest'
+_default_msbuild_version = 'system'
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -72,7 +73,8 @@ def enumerate_sources(source_directory, variant_directory = None):
     @param  variant_directory    Variant directory to which source paths will be rewritten"""
 
     source_file_extensions = [
-        '.cs'
+        '.cs',
+        '.vb'
     ]
 
     sources = []
@@ -91,24 +93,34 @@ def enumerate_sources(source_directory, variant_directory = None):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _find_msbuild_executable(msbuild_version):
+def _find_msbuild_executable(environment, msbuild_version):
     """Locates a suitable MSBuild executable on the current system.
 
+    @param  environment      Environment that is used to look for MSBuild
     @param  msbuild_version  Version number of MSBuild that is requested (i.e. 'latest')
     @returns The absolute path of a MSBuild executable."""
 
+    # If we're asked to find *any* MSBuild version, let's start by seeing if it is already
+    # in the path. This is the case for Linux systems and may be the case for Windows
+    # systems if the user has manually added the Visual Studio environment variables to
+    # his standard environment setup (which is not unusual for CI build slaves)
+    if (msbuild_version == 'latest') or (msbuild_version == 'system'):
+
+        # Prefer MSBuild (as of 2018, Mono xbuild is being replaced by Open Sourced msbuild)
+        msbuild = environment.WhereIs('msbuild')
+        if msbuild:
+            return msbuild
+
+        # But if we can't get MSBuild, fall back to xbuild (only available on Mono systems)
+        xbuild = environment.WhereIs('xbuild')
+        if xbuild:
+            return xbuild
+
     if platform.system() == 'Windows':
 
-        # If someone uses this script in the far future and the Visual Studio version
-        # contained in the expected paths is installed in addition to the newest one,
-        # this might result in finding the older Visual Studio's MSBuild executable.
-        for candidate in _windows_amd64_msbuild_paths[msbuild_version]:
-            if os.path.isfile(candidate):
-                return file
-
         # Only do a scan if we're asked for the latest version as we can't guarantee
-        # what we'll find and figuring out which version we have is a matter of its own
-        if msbuild_version == 'latest':
+        # what we'll find and figuring out which version we have is a problem of its own
+        if (msbuild_version == 'latest') or (msbuild_version == 'system'):
             msbuild_directories = _find_msbuild_directories()
             for msbuild_directory in msbuild_directories:
                 for version in os.listdir(msbuild_directory):
@@ -131,8 +143,16 @@ def _find_msbuild_executable(msbuild_version):
                         if os.path.isfile(executable_path):
                             return executable_path
 
+        # If a specific msbuild version was requested, look for it in its known path
+        for candidate in _windows_amd64_msbuild_paths[msbuild_version]:
+            if os.path.isfile(candidate):
+                return file
+
     else:
 
+        # Linux systems where msbuild is not in the executable paths (we checked them above).
+        # Try msbuild and xbuild in their standard locations, otherwise give up.
+        # (we could look for Mono in /opt if we're hardcore...)
         if os.path.isfile('/usr/bin/msbuild'):
             return '/usr/bin/msbuild'
         elif os.path.isfile('/usr/bin/xbuild'):
@@ -193,21 +213,57 @@ def _find_msbuild_directories():
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _call_msbuild(environment):
+def _call_msbuild(environment, msbuild_project_path, sources, output_path):
     """Invokes MSBuild
 
-    @param  environment  Environment on which MSBuild will be invoked"""
+    @param  environment           Environment on which MSBuild will be invoked
+    @param  msbuild_project_path  Path to the MSBuild project (i.e. *.csproj, *.vcxproj)
+    @param  sources               Input files (not used, but for change detection)
+    @param  output_path           Path of the build output
+    """
+
+    # TODO: Write a .proj 'scanner' and get rid of the 'sources' parameter
+    # TODO: 
 
     msbuild_version = _default_msbuild_version
     if 'MSBUILD_VERSION' in environment:
         msbuild_version = environment['MSBUILD_VERSION']
 
-    msbuild_executable = _find_msbuild_executable(msbuild_version)
+    msbuild_executable = _find_msbuild_executable(environment, msbuild_version)
     if msbuild_executable is None:
         raise FileNotFoundError('Could not find msbuild executable')
 
-    return environment.Command(
-    
+    # Set MSBuild property "OutputPath" to bin
+    # Set MSBuild prop
+    #return environment.Command(
+    return None
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _scan_msbuild_project(node, environment, path):
+    """Scans an MSBuild project for other files it is referencing. This is important
+    for SCons to detect changes in files that are used within the build.
+
+    @param  node         MSBuild project as a SCons File object
+    @param  environment  Environment in which the project is being compiled
+    @param  path         Who knows?"""
+
+    sources = []
+
+    xml_namespaces = {
+        'msbuild': 'http://schemas.microsoft.com/developer/msbuild/2003'
+    }
+
+    contents = node.get_text_contents()
+    project_node = ET.fromstring(contents)
+
+    compile_nodes = project_node.findall('./msbuild:ItemGroup/msbuild:Compile', xml_namespaces)
+    for compile_node in compile_nodes:
+        sources.append(compile_node.attrib.get('Include'))
+
+    print(sources)
+
+    return None
+
 #csccom = "$CSC $CSCFLAGS -out:${TARGET.abspath} $SOURCES"
 #csclibcom = "$CSC -t:library $CSCLIBFLAGS $_CSCLIBPATH $_CSCLIBS -out:${TARGET.abspath} $SOURCES"
-
