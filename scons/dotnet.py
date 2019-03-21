@@ -61,7 +61,7 @@ def register_extension_methods(environment):
 
     #environment.AddMethod(_compile_cli_application, "CliProgram")
     #environment.AddMethod(_compile_cli_library, "CliLibrary")
-    pass
+    environment.AddMethod(_call_msbuild, "MSBuild")
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -107,8 +107,9 @@ def _find_msbuild_executable(msbuild_version):
                 return file
 
         # Only do a scan if we're asked for the latest version as we can't guarantee
+        # what we'll find and figuring out which version we have is a matter of its own
         if msbuild_version == 'latest':
-            msbuild_directories = _find_msbuild_directories(msbuild_version)
+            msbuild_directories = _find_msbuild_directories()
             for msbuild_directory in msbuild_directories:
                 for version in os.listdir(msbuild_directory):
                     version_directory = os.path.join(msbuild_directory, version)
@@ -118,11 +119,11 @@ def _find_msbuild_executable(msbuild_version):
                         if os.path.isfile(executable_path):
                             return executable_path
 
-                        executable_path = os.path.join(version_directory, 'Bin\MSBuild.exe')
+                        executable_path = os.path.join(version_directory, 'amd64\MSBuild.exe')
                         if os.path.isfile(executable_path):
                             return executable_path
 
-                        executable_path = os.path.join(version_directory, 'amd64\MSBuild.exe')
+                        executable_path = os.path.join(version_directory, 'Bin\MSBuild.exe')
                         if os.path.isfile(executable_path):
                             return executable_path
 
@@ -141,7 +142,7 @@ def _find_msbuild_executable(msbuild_version):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _find_msbuild_directories(msbuild_version):
+def _find_msbuild_directories():
     """Looks for MSBuild directories on the system
 
     @returns All MSBuild directories found on the system"""
@@ -189,3 +190,24 @@ def _find_msbuild_directories(msbuild_version):
                                             msbuild_directories.append(msbuild_directory)
 
     return msbuild_directories
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _call_msbuild(environment):
+    """Invokes MSBuild
+
+    @param  environment  Environment on which MSBuild will be invoked"""
+
+    msbuild_version = _default_msbuild_version
+    if 'MSBUILD_VERSION' in environment:
+        msbuild_version = environment['MSBUILD_VERSION']
+
+    msbuild_executable = _find_msbuild_executable(msbuild_version)
+    if msbuild_executable is None:
+        raise FileNotFoundError('Could not find msbuild executable')
+
+    return environment.Command(
+    
+#csccom = "$CSC $CSCFLAGS -out:${TARGET.abspath} $SOURCES"
+#csclibcom = "$CSC -t:library $CSCLIBFLAGS $_CSCLIBPATH $_CSCLIBS -out:${TARGET.abspath} $SOURCES"
+
