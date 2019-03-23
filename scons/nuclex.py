@@ -16,6 +16,7 @@ from SCons.Script import Dir
 # Nuclex SCons libraries
 shared = importlib.import_module('shared')
 cplusplus = importlib.import_module('cplusplus')
+dotnet = importlib.import_module('dotnet')
 
 # Plan:
 #   - if TARGET_ARCH is set, use it. For multi-builds,
@@ -28,7 +29,7 @@ cplusplus = importlib.import_module('cplusplus')
 def create_cplusplus_environment():
     """Creates a new environment with the required variables for building C/C++ projects
 
-    @returns A new scons environment containing the C/C++ variables"""
+    @returns A new scons environment set up for C/C++ builds"""
 
     environment = Environment(
         variables = _parse_default_command_line_options(),
@@ -46,6 +47,28 @@ def create_cplusplus_environment():
     _set_standard_cplusplus_compiler_flags(environment)
     _set_standard_cplusplus_linker_flags(environment)
     _register_cplusplus_extension_methods(environment)
+
+    return environment
+
+# ----------------------------------------------------------------------------------------------- #
+
+def create_dotnet_environment():
+    """Creates a new environment with the required variables for building .NET projects
+
+    @returns A new scons environment set up for .NET builds"""
+
+    environment = Environment(
+        variables = _parse_default_command_line_options(),
+        SOURCE_DIRECTORY = 'Source',
+        TESTS_DIRECTORY = 'Tests',
+        TESTS_RESULT_FILE = "nunit-results.xml",
+        REFERENCES_DIRECTORY = 'References'
+    )
+
+    # Register extension methods and additional variables
+    dotnet.setup(environment)
+
+    _register_dotnet_extension_methods(environment)
 
     return environment
 
@@ -113,6 +136,16 @@ def _register_cplusplus_extension_methods(environment):
     environment.AddMethod(_build_cplusplus_library_with_tests, "build_library_with_tests")
     environment.AddMethod(_build_cplusplus_executable, "build_executable")
     environment.AddMethod(_run_cplusplus_unit_tests, "run_unit_tests")
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _register_dotnet_extension_methods(environment):
+    """Registers extensions methods for .NET builds into a SCons environment
+
+    @param  environment  Environment the extension methods will be registered to"""
+
+    environment.AddMethod(_build_msbuild_project, "build_project")
+    environment.AddMethod(_build_msbuild_project_with_tests, "build_project_with_tests")
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -534,6 +567,35 @@ def _run_cplusplus_unit_tests(environment, universal_test_executable_name):
         action = '-$SOURCE --gtest_output=xml:$TARGET',
         target = test_results_path
     )
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _build_msbuild_project(environment, msbuild_project_path):
+    """Builds an MSBuild project
+
+    @param  environment           Environment the MSBuild project will be compiled in
+    @param  msbuild_project_path  Path to the MSBuild project file that will be built"""
+
+    msbuild_project_file = environment.File(msbuild_project_path)
+    dotnet_version_tag = dotnet.detect_msbuild_target_framework(msbuild_project_file)
+
+    build_directory_name = environment.get_build_directory_name(dotnet_version_tag)
+
+    intermediate_build_directory = os.path.join(
+        environment['INTERMEDIATE_DIRECTORY'], build_directory_name
+    )
+
+    environment.MSBuild(
+        msbuild_project_file.srcnode().abspath,
+        intermediate_build_directory
+    )
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _build_msbuild_project_with_tests(
+    environment, msbuild_project_path, tests_msbuild_project_path
+):
+    _build_msbuild_project(environment, msbuild_project_path)
 
 # ----------------------------------------------------------------------------------------------- #
 
