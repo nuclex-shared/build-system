@@ -26,7 +26,7 @@ _default_blender_version = '2.7'
 # ----------------------------------------------------------------------------------------------- #
 
 def register_extension_methods(environment):
-    """Registers extensions methods for Godot builds into a SCons environment
+    """Registers extension methods for Blender exporting into a SCons environment
 
     @param  environment  Environment the extension methods will be registered to"""
 
@@ -61,9 +61,6 @@ def enumerate_blendfiles(root_directory, variant_directory = None):
 
     @param  root_directory     Directory containing the Blender files
     @param  variant_directory  Variant directory to which source paths will be rewritten"""
-
-    # TODO: manually traverse directory levels and honor .gdignore files?
-    # TODO: don't filter by file extensions, everything in a project directory is an asset?
 
     blendfile_extensions = [
         '.blend',
@@ -199,8 +196,57 @@ def _export_fbx(environment):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _export_collada(environment):
-    pass
+def _export_collada(environment, target_path, blendfile_path, meshes = None):
+    """Exports a blendfile to Collada
+
+    @param  environment     SCons environment in which the export will be done
+    @param  target_path     Path in which the target Collada  ile will be saved
+    @param  blendfile_path  Path of the source blendfile containing the meshes
+    @param  meshes          List of meshes that will be exported"""
+
+    blender_executable = _find_blender_executable(environment, _default_blender_version)
+    if blender_executable is None:
+        raise FileNotFoundError("Could not locate a Blender executable")
+
+    own_path = os.path.abspath(__file__)
+    own_directory = os.path.dirname(own_path)
+    actor_export_script = os.path.join(own_directory, 'blender-export-actor.py')
+
+    extra_arguments = str()
+    if not (meshes is None):
+        for mesh in meshes:
+            extra_arguments +=  ' ' + mesh
+
+    # Finally, invoke MSBuild, telling SCons about which files are its inputs
+    # and which files will be produced to the best of our ability
+    return environment.Command(
+        source = blendfile_path,
+        action = (
+            '"' + blender_executable + '" $SOURCE' +
+            ' --python ' + actor_export_script + 
+            ' --background' +
+            ' --' +
+            ' $TARGET ' +
+            extra_arguments
+        ),
+        target = target_path
+    )
+
+    #print(actor_export_script)
+
+
+    
+    #blender \
+    #    ./Models/SmallDoor.blend \
+    #    --python ../../../Blender/actor-export.py \
+    #    --background \
+    #    -- \
+    #    Models/SmallDoor_Frame.fbx \
+    #    DoorFrame \
+    #    Hinges \
+    #    Sill
+
+    pass 
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -221,3 +267,4 @@ def _export_animations_collada(environment):
 
 def _export_animations_gltf(environment):
     pass
+
