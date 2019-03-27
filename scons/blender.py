@@ -210,7 +210,7 @@ def _export_collada(environment, target_path, blendfile_path, meshes = None):
 
     own_path = os.path.abspath(__file__)
     own_directory = os.path.dirname(own_path)
-    actor_export_script = os.path.join(own_directory, 'blender-export-actor.py')
+    mesh_export_script = os.path.join(own_directory, 'blender-export-meshes.py')
 
     extra_arguments = str()
     if not (meshes is None):
@@ -222,8 +222,8 @@ def _export_collada(environment, target_path, blendfile_path, meshes = None):
     return environment.Command(
         source = blendfile_path,
         action = (
-            '"' + blender_executable + '" $SOURCE' +
-            ' --python ' + actor_export_script + 
+            '"' + blender_executable + '" "$SOURCE"' +
+            ' --python "' + mesh_export_script + '"'
             ' --background' +
             ' --' +
             ' $TARGET ' +
