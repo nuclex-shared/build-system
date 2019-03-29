@@ -135,15 +135,15 @@ def _find_msbuild_executable(environment, msbuild_version):
                     version_directory = os.path.join(msbuild_directory, version)
                     if os.path.isdir(version_directory):
 
-                        executable_path = os.path.join(version_directory, 'Bin\amd64\MSBuild.exe')
+                        executable_path = os.path.join(version_directory, 'Bin\\amd64\\MSBuild.exe')
                         if os.path.isfile(executable_path):
                             return executable_path
 
-                        executable_path = os.path.join(version_directory, 'amd64\MSBuild.exe')
+                        executable_path = os.path.join(version_directory, 'amd64\\MSBuild.exe')
                         if os.path.isfile(executable_path):
                             return executable_path
 
-                        executable_path = os.path.join(version_directory, 'Bin\MSBuild.exe')
+                        executable_path = os.path.join(version_directory, 'Bin\\MSBuild.exe')
                         if os.path.isfile(executable_path):
                             return executable_path
 
@@ -236,10 +236,15 @@ def _call_msbuild(environment, msbuild_project_path, output_directory):
     if msbuild_executable is None:
         raise FileNotFoundError('Could not find msbuild executable')
 
-    # Extra arguments controlling the build
     output_directory_node = environment.Dir(output_directory)
+    msbuild_project_file = environment.File(msbuild_project_path)
+
+    # Extra arguments controlling the build
+    absolute_output_directory = output_directory_node.srcnode().abspath
+    absolute_msbuild_directory = os.path.dirname(msbuild_project_file.srcnode().abspath)
+    relative_outdir = os.path.relpath(absolute_output_directory, absolute_msbuild_directory)
     extra_arguments = (
-        ' /property:OutDir="' + output_directory_node.srcnode().abspath + '\"'
+        ' /property:OutDir=' + os.path.join(relative_outdir, str())
         #' /p:OutputPath="' + output_path + '"'
     )
 
