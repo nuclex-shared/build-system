@@ -92,13 +92,21 @@ def _parse_default_command_line_options():
         )
     )
 
+    # Default architecture for the binaries. We follow the Debian practices,
+    # which, while clueless and chaotic, are at least widely used.
+    default_arch = 'amd64'
+    if 'armv7' in platform.uname()[4]:
+        default_arch = 'armhf'
+    if 'aarch64' in platform.uname()[4]:
+        default_arch = 'arm64'
+
     # CPU architecture to target
     command_line_variables.Add(
         EnumVariable(
             'TARGET_ARCH',
             'CPU architecture the binary will run on',
-            'amd64',
-            allowed_values=('any', 'amd64', 'x86', 'arm')
+            default_arch,
+            allowed_values=('armhf', 'arm64', 'x86', 'amd64', 'any')
         )
     )
 
