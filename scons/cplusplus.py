@@ -275,7 +275,7 @@ def get_compiler_version(environment):
         )
         (stdout, stderr) = gcc_process.communicate()
 
-        compiler_version = re.search('[0-9][0-9.]*', stdout)
+        compiler_version = re.search('[0-9][0-9.]*', str(stdout))
 
     # If no match is found the compiler didn't proide the expected output
     # and we have no idea which version it might be
