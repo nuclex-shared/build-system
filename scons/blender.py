@@ -142,7 +142,7 @@ def _find_blender_executable(environment, blender_version):
 def _find_blender_in_windows_registry():
     """Tries to locate Blender using the Windows registry
 
-    @returns The path to the Blender executable for None is not found"""
+    @returns The path to the Blender executable or None if not found"""
     commands = []
 
     # There is no clear install path in the registry (and the one there is has a GUID-like
@@ -171,10 +171,10 @@ def _find_blender_in_windows_registry():
 
     candidates = []
 
-    # Now we have a few "commands" which invoke a program when  .blend files are
+    # Now we have a few "commands" which invoke a program when .blend files are
     # opened on the system. Extract the path of the program they're invoking.
     for command in commands:
-        matches = re.findall(r'\"(.+?)\"',command)
+        matches = re.findall(r'\"(.+?)\"', command)
         if not (matches is None):
             length = len(matches)
             if length > 0:
@@ -191,16 +191,11 @@ def _find_blender_in_windows_registry():
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _export_fbx(environment):
-    pass
-
-# ----------------------------------------------------------------------------------------------- #
-
-def _export_collada(environment, target_path, blendfile_path, meshes = None):
-    """Exports a blendfile to Collada
+def _export_fbx(environment, target_path, blendfile_path, meshes = None):
+    """Exports a blendfile to FBX
 
     @param  environment     SCons environment in which the export will be done
-    @param  target_path     Path in which the target Collada  ile will be saved
+    @param  target_path     Path in which the target FBX file will be saved
     @param  blendfile_path  Path of the source blendfile containing the meshes
     @param  meshes          List of meshes that will be exported"""
 
@@ -215,7 +210,7 @@ def _export_collada(environment, target_path, blendfile_path, meshes = None):
     extra_arguments = str()
     if not (meshes is None):
         for mesh in meshes:
-            extra_arguments +=  ' ' + mesh
+            extra_arguments += ' ' + mesh
 
     # Finally, invoke MSBuild, telling SCons about which files are its inputs
     # and which files will be produced to the best of our ability
@@ -223,7 +218,8 @@ def _export_collada(environment, target_path, blendfile_path, meshes = None):
         source = blendfile_path,
         action = (
             '"' + blender_executable + '" "$SOURCE"' +
-            ' --python "' + mesh_export_script + '"'
+            ' --enable-autoexec' +
+            ' --python "' + mesh_export_script + '"' +
             ' --background' +
             ' --' +
             ' $TARGET ' +
@@ -232,21 +228,44 @@ def _export_collada(environment, target_path, blendfile_path, meshes = None):
         target = target_path
     )
 
-    #print(actor_export_script)
+# ----------------------------------------------------------------------------------------------- #
 
+def _export_collada(environment, target_path, blendfile_path, meshes = None):
+    """Exports a blendfile to Collada
 
-    
-    #blender \
-    #    ./Models/SmallDoor.blend \
-    #    --python ../../../Blender/actor-export.py \
-    #    --background \
-    #    -- \
-    #    Models/SmallDoor_Frame.fbx \
-    #    DoorFrame \
-    #    Hinges \
-    #    Sill
+    @param  environment     SCons environment in which the export will be done
+    @param  target_path     Path in which the target Collada file will be saved
+    @param  blendfile_path  Path of the source blendfile containing the meshes
+    @param  meshes          List of meshes that will be exported"""
 
-    pass 
+    blender_executable = _find_blender_executable(environment, _default_blender_version)
+    if blender_executable is None:
+        raise FileNotFoundError("Could not locate a Blender executable")
+
+    own_path = os.path.abspath(__file__)
+    own_directory = os.path.dirname(own_path)
+    mesh_export_script = os.path.join(own_directory, 'blender-export-meshes.py')
+
+    extra_arguments = str()
+    if not (meshes is None):
+        for mesh in meshes:
+            extra_arguments += ' ' + mesh
+
+    # Finally, invoke MSBuild, telling SCons about which files are its inputs
+    # and which files will be produced to the best of our ability
+    return environment.Command(
+        source = blendfile_path,
+        action = (
+            '"' + blender_executable + '" "$SOURCE"' +
+            ' --enable-autoexec' +
+            ' --python "' + mesh_export_script + '"' +
+            ' --background' +
+            ' --' +
+            ' $TARGET ' +
+            extra_arguments
+        ),
+        target = target_path
+    )
 
 # ----------------------------------------------------------------------------------------------- #
 
