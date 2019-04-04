@@ -50,10 +50,10 @@ import os
 # ----------------------------------------------------------------------------------------------- #
 
 def _main():
+    """Performs the scene export in Blender"""
 
-    print('Enabling required add-ons...')
+    print('Enabling required add-ons')
     _enable_required_plugins()
-
 
     cwd = os.getcwd()
     print("Base path: " + cwd)
@@ -92,12 +92,14 @@ def _main():
     file_extension = file_extension.lower()
 
     # Export the scene
-    if file_extension == ".fbx":
+    print('Exporting to ' + outpath)
+    if file_extension == '.fbx':
         _export_scene_to_fbx(outpath)
-    elif file_extension == ".dae":
+    elif file_extension == '.dae':
         _export_scene_to_collada(outpath)
     else:
-        die("Only FBX and Collada (.dae) are supported at this time")
+        die('Only FBX and Collada (.dae) are supported at this time')
+    print('Completed!')
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -141,10 +143,15 @@ def _apply_all_modifiers_except_armature(mesh):
     target_obj = bpy.context.active_object
     tool_objs = [o for o in bpy.context.selected_objects if o != target_obj]
 
+    at_least_one_applied = False
     for modifier in target_obj.modifiers:
         if not ('armature' in modifier.name.lower()):
             print('\t\t' + modifier.name)
             bpy.ops.object.modifier_apply(modifier=modifier.name)
+            at_least_one_applied = True
+
+    if not at_least_one_applied:
+        print('\t\t<none>')
 
 # ----------------------------------------------------------------------------------------------- #
 

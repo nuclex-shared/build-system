@@ -203,9 +203,9 @@ def _export_fbx(environment, target_path, blendfile_path, meshes = None):
     if blender_executable is None:
         raise FileNotFoundError("Could not locate a Blender executable")
 
-    own_path = os.path.abspath(__file__)
-    own_directory = os.path.dirname(own_path)
-    mesh_export_script = os.path.join(own_directory, 'blender-export-meshes.py')
+    own_directory = os.path.dirname(__file__)
+    relative_script_path = os.path.join(own_directory, 'blender-export-meshes.py')
+    absolute_script_path = environment.File('#' + relative_script_path).srcnode().abspath
 
     extra_arguments = str()
     if not (meshes is None):
@@ -219,7 +219,7 @@ def _export_fbx(environment, target_path, blendfile_path, meshes = None):
         action = (
             '"' + blender_executable + '" "$SOURCE"' +
             ' --enable-autoexec' +
-            ' --python "' + mesh_export_script + '"' +
+            ' --python "' + absolute_script_path + '"' +
             ' --background' +
             ' --' +
             ' $TARGET ' +
@@ -242,9 +242,9 @@ def _export_collada(environment, target_path, blendfile_path, meshes = None):
     if blender_executable is None:
         raise FileNotFoundError("Could not locate a Blender executable")
 
-    own_path = os.path.abspath(__file__)
-    own_directory = os.path.dirname(own_path)
-    mesh_export_script = os.path.join(own_directory, 'blender-export-meshes.py')
+    own_directory = os.path.dirname(__file__)
+    relative_script_path = os.path.join(own_directory, 'blender-export-meshes.py')
+    absolute_script_path = environment.File('#' + relative_script_path).srcnode().abspath
 
     extra_arguments = str()
     if not (meshes is None):
@@ -258,7 +258,7 @@ def _export_collada(environment, target_path, blendfile_path, meshes = None):
         action = (
             '"' + blender_executable + '" "$SOURCE"' +
             ' --enable-autoexec' +
-            ' --python "' + mesh_export_script + '"' +
+            ' --python "' + absolute_script_path + '"' +
             ' --background' +
             ' --' +
             ' $TARGET ' +
