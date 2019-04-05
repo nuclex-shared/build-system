@@ -52,18 +52,18 @@ import os
 def _main():
     """Performs the scene export in Blender"""
 
-    print('Enabling required add-ons')
+    print('Enabling required add-ons (better collada, fbx, rigify)')
     _enable_required_plugins()
 
     cwd = os.getcwd()
-    print("Base path: " + cwd)
+    print('Base path: \033[94m' + cwd + '\033[0m')
 
     argv = sys.argv
     argv = argv[argv.index("--") + 1:]  # get all args after "--"
 
     # Target path for the .fbx we're going to export
     outpath = argv[0]
-    print("Output path: " + outpath)
+    print('Output path: \033[94m' + outpath + '\033[0m')
 
     # Meshes that should be exported
     export_masks = argv[1:]
@@ -73,10 +73,10 @@ def _main():
 
     print('Selected meshes:')
     for mesh in meshes_to_export:
-        print('\t' + mesh.name)
+        print('\t\033[94m' + mesh.name + '\033[0m')
 
     if len(meshes_to_export) == 0:
-        print('\tWARNING: No meshes matching any of the specified names/wildcards')
+        print('\t\033[93mWARNING: No meshes matching any of the specified names/wildcards\033[0m')
 
     _clear_selection() # clear the saved selection
     _select_meshes(meshes_to_export)
@@ -84,7 +84,7 @@ def _main():
     # Apply all modifiers (the Collada exporter has such an option, but it's broken)
     print('Applying modifiers:')
     for mesh in meshes_to_export:
-        print('\t' + mesh.name)
+        print('\t\033[94m' + mesh.name + '\033[0m')
         _apply_all_modifiers_except_armature(mesh);
 
     # Figure out which export format the user wants to use
@@ -92,14 +92,15 @@ def _main():
     file_extension = file_extension.lower()
 
     # Export the scene
-    print('Exporting to ' + outpath)
+    print('Exporting to \033[94m' + outpath + '\033[0m')
     if file_extension == '.fbx':
         _export_scene_to_fbx(outpath)
     elif file_extension == '.dae':
         _export_scene_to_collada(outpath)
     else:
         die('Only FBX and Collada (.dae) are supported at this time')
-    print('Completed!')
+
+    print('\033[92mCompleted!\033[0m')
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -146,12 +147,12 @@ def _apply_all_modifiers_except_armature(mesh):
     at_least_one_applied = False
     for modifier in target_obj.modifiers:
         if not ('armature' in modifier.name.lower()):
-            print('\t\t' + modifier.name)
+            print('\t\t\033[96m' + modifier.name + '\033[0m')
             bpy.ops.object.modifier_apply(modifier=modifier.name)
             at_least_one_applied = True
 
     if not at_least_one_applied:
-        print('\t\t<none>')
+        print('\t\t\033[96m<none>\033[0m')
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -251,11 +252,11 @@ def _export_scene_to_collada(outpath, selected_objects_only = True):
 
 print(str())
 print("actor-export.py running...")
-print("===============================================================================")
+print('\033[95m===============================================================================\033[0m')
 
 _main()
 
-print("===============================================================================")
+print('\033[95m===============================================================================\033[0m')
 print(str())
 
 # Quit. We do not want to risk keeping the window open,
