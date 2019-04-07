@@ -285,7 +285,36 @@ def _export_animations_fbx(
     @param  animation_blendfile_path  Path of the blendfile containing the animations
     @param  animations                List of animations that will be exported"""
 
-    pass
+    blender_executable = _find_blender_executable(environment, _default_blender_version)
+    if blender_executable is None:
+        raise FileNotFoundError("Could not locate a Blender executable")
+
+    own_directory = os.path.dirname(__file__)
+    relative_script_path = os.path.join(own_directory, 'blender-export-animations.py')
+    absolute_script_path = environment.File('#' + relative_script_path).srcnode().abspath
+
+    extra_arguments = str()
+    if not (animations is None):
+        for animation in animations:
+            extra_arguments += ' ' + animation
+
+    # Finally, invoke MSBuild, telling SCons about which files are its inputs
+    # and which files will be produced to the best of our ability
+    export_command = environment.Command(
+        source = actor_blendfile_path,
+        action = (
+            '"' + blender_executable + '" "$SOURCES"' +
+            ' --enable-autoexec' +
+            ' --python "' + absolute_script_path + '"' +
+            ' --background' +
+            ' --' +
+            ' $TARGET ' +
+            ' ' + animation_blendfile_path +
+            extra_arguments
+        ),
+        target = target_path
+    )
+    environment.Depends(export_command, animation_blendfile_path)
 
 # ----------------------------------------------------------------------------------------------- #
 

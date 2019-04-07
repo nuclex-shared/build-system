@@ -17,6 +17,7 @@ from SCons.Script import Dir
 shared = importlib.import_module('shared')
 cplusplus = importlib.import_module('cplusplus')
 dotnet = importlib.import_module('dotnet')
+blender = importlib.import_module('blender')
 
 # Plan:
 #   - if TARGET_ARCH is set, use it. For multi-builds,
@@ -69,6 +70,21 @@ def create_dotnet_environment():
     dotnet.setup(environment)
 
     _register_dotnet_extension_methods(environment)
+
+    return environment
+
+# ----------------------------------------------------------------------------------------------- #
+
+def create_blender_environment():
+    """Creates a new environment with the required variables for export Blender models
+
+    @returns A new scons environment set up for Blender exports"""
+
+    environment = Environment(
+        variables = _parse_default_command_line_options()
+    )
+
+    _register_blender_extension_methods(environment)
 
     return environment
 
@@ -135,7 +151,7 @@ def _parse_default_command_line_options():
 # ----------------------------------------------------------------------------------------------- #
 
 def _register_cplusplus_extension_methods(environment):
-    """Registers extensions methods for C/C++ builds into a SCons environment
+    """Registers extension methods for C/C++ builds into a SCons environment
 
     @param  environment  Environment the extension methods will be registered to"""
 
@@ -148,12 +164,21 @@ def _register_cplusplus_extension_methods(environment):
 # ----------------------------------------------------------------------------------------------- #
 
 def _register_dotnet_extension_methods(environment):
-    """Registers extensions methods for .NET builds into a SCons environment
+    """Registers extension methods for .NET builds into a SCons environment
 
     @param  environment  Environment the extension methods will be registered to"""
 
     environment.AddMethod(_build_msbuild_project, "build_project")
     environment.AddMethod(_build_msbuild_project_with_tests, "build_project_with_tests")
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _register_blender_extension_methods(environment):
+    """Registers extension methods for Blender exports into a SCons environment
+
+    @param  environment  Environment the extension methods will be registered to"""
+
+    blender.register_extension_methods(environment)
 
 # ----------------------------------------------------------------------------------------------- #
 

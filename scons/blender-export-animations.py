@@ -106,8 +106,8 @@ def _main():
     _clear_selection() # don't rely on what was selected when the user saved
     armature = _select_first_armature() # we want to export the Armature
 
-    create_and_select_dummy_mesh(armature) # create dummy geometry to export
-    select_first_wildcard_action(armature, action_masks[0]);
+    _create_and_select_dummy_mesh(armature) # create dummy geometry to export
+    _select_first_wildcard_action(armature, action_masks[0]);
 
     # Figure out which export format the user wants to use
     filename, file_extension = os.path.splitext(outpath)
@@ -225,6 +225,11 @@ def _select_first_armature():
 # ----------------------------------------------------------------------------------------------- #
 
 def _export_to_fbx(outpath):
+    """Exports the current Blender scene (with its assumedly carefully selected meshes
+    and actions (= animation clips)) to an FBX file
+
+    @param  outpath  Path under which the FBX file will be saved"""
+
     bpy.ops.export_scene.fbx(
         filepath=outpath,
         check_existing=False,
@@ -265,6 +270,11 @@ def _export_to_fbx(outpath):
 # ----------------------------------------------------------------------------------------------- #
 
 def _export_to_collada(outpath):
+    """Exports the current Blender scene (with its assumedly carefully selected meshes
+    and actions (= animation clips)) to a Collada file
+
+    @param  outpath  Path under which the Collada file will be saved"""
+
     bpy.ops.export_scene.dae(
         filepath=outpath,
         check_existing=False,
@@ -279,10 +289,11 @@ def _export_to_collada(outpath):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def create_and_select_dummy_mesh(armature):
+def _create_and_select_dummy_mesh(armature):
     """Creates a dummy mesh that is parented to the specified armature
 
     @param  armature  Armature to which the dummy mesh will be parented"""
+
     verts = [
         (-1.0, -1.0, 0.0),
         (+1.0, -1.0, 0.0),
@@ -325,7 +336,7 @@ def create_and_select_dummy_mesh(armature):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def select_first_wildcard_action(armature, wildcard):
+def _select_first_wildcard_action(armature, wildcard):
     """Selects the first action matching the specified wildcard into the Armature.
 
     @remarks
