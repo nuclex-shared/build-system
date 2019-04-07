@@ -274,13 +274,62 @@ def _export_gltf(environment):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _export_animations_fbx(environment):
+def _export_animations_fbx(
+    environment, target_path, actor_blendfile_path, animation_blendfile_path, animations = None
+):
+    """Exports only the animations in a blendfile to FBX
+
+    @param  environment               SCons environment in which the export will be done
+    @param  target_path               Path in which the target FBX file will be saved
+    @param  actor_blendfile_path      Path of the blendfile containing the rigged actor
+    @param  animation_blendfile_path  Path of the blendfile containing the animations
+    @param  animations                List of animations that will be exported"""
+
     pass
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _export_animations_collada(environment):
-    pass
+def _export_animations_collada(
+    environment, target_path, actor_blendfile_path, animation_blendfile_path, animations = None
+):
+    """Exports only the animations in a blendfile to Collada
+
+    @param  environment               SCons environment in which the export will be done
+    @param  target_path               Path in which the target Collada file will be saved
+    @param  actor_blendfile_path      Path of the blendfile containing the rigged actor
+    @param  animation_blendfile_path  Path of the blendfile containing the animations
+    @param  animations                List of animations that will be exported"""
+
+    blender_executable = _find_blender_executable(environment, _default_blender_version)
+    if blender_executable is None:
+        raise FileNotFoundError("Could not locate a Blender executable")
+
+    own_directory = os.path.dirname(__file__)
+    relative_script_path = os.path.join(own_directory, 'blender-export-animations.py')
+    absolute_script_path = environment.File('#' + relative_script_path).srcnode().abspath
+
+    extra_arguments = str()
+    if not (animations is None):
+        for animation in animations:
+            extra_arguments += ' ' + animation
+
+    # Finally, invoke MSBuild, telling SCons about which files are its inputs
+    # and which files will be produced to the best of our ability
+    export_command = environment.Command(
+        source = actor_blendfile_path,
+        action = (
+            '"' + blender_executable + '" "$SOURCES"' +
+            ' --enable-autoexec' +
+            ' --python "' + absolute_script_path + '"' +
+            ' --background' +
+            ' --' +
+            ' $TARGET ' +
+            ' ' + animation_blendfile_path +
+            extra_arguments
+        ),
+        target = target_path
+    )
+    environment.Depends(export_command, animation_blendfile_path)
 
 # ----------------------------------------------------------------------------------------------- #
 

@@ -1,5 +1,5 @@
-# actor-export.py
-#
+#!/usr/bin/env python
+
 # Purpose:
 #   Exports an actor to an .fbx file. When working on complex characters,
 #   a .blend file will often contain helpers, backups and other things that
@@ -251,7 +251,7 @@ def _export_scene_to_collada(outpath, selected_objects_only = True):
 # ----------------------------------------------------------------------------------------------- #
 
 print(str())
-print("actor-export.py running...")
+print("blender-export-meshes.py running...")
 print('\033[95m===============================================================================\033[0m')
 
 _main()
