@@ -267,7 +267,7 @@ def get_compiler_version(environment):
         )
         (stdout, stderr) = msvc_process.communicate()
 
-        compiler_version = re.search('[0-9][0-9.]*', stdout)
+        compiler_version = re.search('[0-9][0-9.]*', str(stdout))
 
     else:
         gcc_process = subprocess.Popen(

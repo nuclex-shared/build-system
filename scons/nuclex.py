@@ -372,10 +372,19 @@ def _build_cplusplus_library(
         environment.Append(CFLAGS='-fpic') # Use position-independent code
 
     # Build a shared library
+    build_library = None
     if static:
-        return environment.StaticLibrary(library_path, sources)
+        build_library = environment.StaticLibrary(library_path, sources)
     else:
-        return environment.SharedLibrary(library_path, sources)
+        build_library = environment.SharedLibrary(library_path, sources)
+
+    # On Windows, a .PDB file is produced when doing a debug build
+    if (platform.system() == 'Windows') and _is_debug_build(environment):
+        environment.SideEffect(
+            os.path.splitext(executable_path)[0] + '.pdb', build_library
+        )
+
+    return build_library
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -412,8 +421,10 @@ def _build_cplusplus_executable(
 
     # On Windows, there is a distinguishment between console (shell) applications
     # and GUI applications. Add the appropriate flag if needed.
-    if (platform.system() == 'Windows') and console:
-        environment.Append(LINKFLAGS='/SUBSYSTEM:CONSOLE')
+    if (platform.system() == 'Windows'):
+        if console:
+            environment.Append(LINKFLAGS='/SUBSYSTEM:CONSOLE')
+
         environment.Append(
             CXXFLAGS='/Fd"' + os.path.splitext(executable_path)[0] + '.pdb"'
         )
@@ -427,7 +438,15 @@ def _build_cplusplus_executable(
         environment.Append(CFLAGS='-fpie') # Use position-independent code
 
     # Build the executable
-    return environment.Program(executable_path, sources)
+    build_executable = environment.Program(executable_path, sources)
+
+    # On Windows, a .PDB file is produced when doing a debug build
+    if (platform.system() == 'Windows') and _is_debug_build(environment):
+        environment.SideEffect(
+            os.path.splitext(executable_path)[0] + '.pdb', build_executable
+        )
+
+    return build_executable
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -526,6 +545,12 @@ def _build_cplusplus_library_with_tests(
 
             compile_shared_library = sharedlib_environment.SharedLibrary(library_path, sources)
             sharedlib_environment.Depends(compile_shared_library, create_dummy_file)
+
+            # On Windows, a .PDB file is produced when doing a debug build
+            if _is_debug_build(environment):
+                environment.SideEffect(
+                    os.path.splitext(library_path)[0] + '.pdb', compile_share_library
+                )
 
         else:
             sharedlib_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
