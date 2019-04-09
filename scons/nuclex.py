@@ -636,7 +636,7 @@ def _build_cplusplus_library_with_tests(
     environment.Depends(compile_shared_library, compile_static_library)
     environment.Depends(compile_unit_tests, compile_static_library)
 
-    if (platform.systme() == 'Windows') and _is_debug_build(environment):
+    if (platform.system() == 'Windows') and _is_debug_build(environment):
         return [
             compile_shared_library, compile_unit_tests,
             build_debug_database, build_test_debug_database
