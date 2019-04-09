@@ -90,6 +90,54 @@ def create_blender_environment():
 
 # ----------------------------------------------------------------------------------------------- #
 
+def build_all(environment, root_directory):
+    """Compiles all SCons build scripts below the specified directory
+
+    @param  environment     SCons environment that will be starting the nested builds
+    @param  root_directory  Directory below which all SCons build scripts will be executed"""
+
+    build_scripts = _get_all_build_scripts(root_directory)
+    for build_script in build_scripts:
+        environment.SConscript(build_script)
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _get_all_build_scripts(root_directory):
+    """Locates SCons build scripts in all directories below the specified root
+
+    @param  root_directory  Directory below which SCons scripts will be collected
+    @returns All SCons scripts below the specified root directory"""
+
+    scripts = []
+
+    for entry in os.listdir(root_directory):
+        path = os.path.join(root_directory, entry)
+        if os.path.isdir(path):
+            _recursively_collect_build_scripts(scripts, path)
+
+    #scripts.reverse()
+
+    return scripts
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _recursively_collect_build_scripts(scripts, directory):
+    """Recursively searches for SCons build scripts and adds them to the provided list
+
+    @param  scripts    List to which any discovered build scripts will be added
+    @param  directory  Directory from which on the method will recursively search"""
+
+    for entry in os.listdir(directory):
+        path = os.path.join(directory, entry)
+        if os.path.isdir(path):
+            _recursively_collect_build_scripts(scripts, path)
+        elif os.path.isfile(path):
+            if ('SConstruct' in entry) or ('SConscript' in entry):
+                scripts.append(path)
+
+
+# ----------------------------------------------------------------------------------------------- #
+
 def _parse_default_command_line_options():
     """Parses the command line options controlling various build settings
 
@@ -361,30 +409,28 @@ def _build_cplusplus_library(
     )
 
     if platform.system() == 'Windows':
-        environment.Append(
-            CXXFLAGS='/Fd"' + os.path.splitext(library_path)[0] + '.pdb"'
-        )
-        environment.Append(
-            CFLAGS='/Fd"' + os.path.splitext(library_path)[0] + '.pdb"'
-        )
+        if _is_debug_build(environment):
+            pdb_file_path = os.path.splitext(library_path)[0] + '.pdb'
+            environment.Append(CXXFLAGS='/Fd"' + pdb_file_path + '"')
+            environment.Append(CFLAGS='/Fd"' + pdb_file_path + '"')
     else:
         environment.Append(CXXFLAGS='-fpic') # Use position-independent code
         environment.Append(CFLAGS='-fpic') # Use position-independent code
 
-    # Build a shared library
+    # Build either a static or a shared library
     build_library = None
     if static:
         build_library = environment.StaticLibrary(library_path, sources)
     else:
         build_library = environment.SharedLibrary(library_path, sources)
 
-    # On Windows, a .PDB file is produced when doing a debug build
+    # If we're on Windows, a side effect of building a library in debug mode is
+    # that a PDB file will be generated. Deal with that.
     if (platform.system() == 'Windows') and _is_debug_build(environment):
-        environment.SideEffect(
-            os.path.splitext(executable_path)[0] + '.pdb', build_library
-        )
-
-    return build_library
+        build_debug_database = environment.SideEffect(pdb_file_path, build_library)
+        return [ build_library, build_debug_database ]
+    else:
+        return build_library
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -421,16 +467,15 @@ def _build_cplusplus_executable(
 
     # On Windows, there is a distinguishment between console (shell) applications
     # and GUI applications. Add the appropriate flag if needed.
-    if (platform.system() == 'Windows'):
+    pdb
+    if platform.system() == 'Windows':
         if console:
             environment.Append(LINKFLAGS='/SUBSYSTEM:CONSOLE')
 
-        environment.Append(
-            CXXFLAGS='/Fd"' + os.path.splitext(executable_path)[0] + '.pdb"'
-        )
-        environment.Append(
-            CFLAGS='/Fd"' + os.path.splitext(executable_path)[0] + '.pdb"'
-        )
+        if _is_debug_build(environment):
+            pdb_file_path = os.path.splitext(executable_path)[0] + '.pdb'
+            environment.Append(CXXFLAGS='/Fd"' + pdb_file_path + '"')
+            environment.Append(CFLAGS='/Fd"' + pdb_file_path + '"')
     else:
         environment.Append(CXXFLAGS='-fpic') # Use position-independent code
         environment.Append(CXXFLAGS='-fpie') # Use position-independent code
@@ -439,14 +484,11 @@ def _build_cplusplus_executable(
 
     # Build the executable
     build_executable = environment.Program(executable_path, sources)
-
-    # On Windows, a .PDB file is produced when doing a debug build
     if (platform.system() == 'Windows') and _is_debug_build(environment):
-        environment.SideEffect(
-            os.path.splitext(executable_path)[0] + '.pdb', build_executable
-        )
-
-    return build_executable
+        build_debug_database = environment.SideEffect(pdb_file_path, build_executable)
+        return [ build_executable, build_debug_database ]
+    else:
+        return build_executable
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -486,7 +528,8 @@ def _build_cplusplus_library_with_tests(
         environment.get_build_directory_name()
     )
 
-    base_directory = Dir('.').abspath # Necessary if this is running inside env.SConscript()
+    base_directory = environment.Dir('.').abspath
+    #base_directory = Dir('.').abspath # Necessary if this is running inside env.SConscript()
 
     # Build a static library that we can reuse for the shared library and test executable
     if True:
@@ -502,12 +545,10 @@ def _build_cplusplus_library_with_tests(
         #staticlib_environment['PDB'] = os.path.splitext(intermediate_library_path)[0] + '.pdb"'
 
         if platform.system() == 'Windows':
-            staticlib_environment.Append(
-                CXXFLAGS='/Fd"' + os.path.join(base_directory, os.path.splitext(intermediate_library_path)[0] + '.pdb"')
-            )
-            staticlib_environment.Append(
-                CFLAGS='/Fd"' + os.path.join(base_directory, os.path.splitext(intermediate_library_path)[0] + '.pdb"')
-            )
+            if _is_debug_build(environment):
+                pdb_file_path = os.path.splitext(intermediate_library_path)[0] + '.pdb'
+                staticlib_environment.Append(CXXFLAGS='/Fd"' + pdb_file_path + '"')
+                staticlib_environment.Append(CFLAGS='/Fd"' + pdb_file_path + '"')
         else:
             staticlib_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
             staticlib_environment.Append(CFLAGS='-fpic') # Use position-independent code
@@ -515,6 +556,8 @@ def _build_cplusplus_library_with_tests(
         compile_static_library = staticlib_environment.StaticLibrary(
             intermediate_library_path, sources
         )
+        if (platform.system() == 'Windows') and _is_debug_build(environment):
+            staticlib_environment.SideEffect(pdb_file_path, compile_static_library)
 
     # Build a shared library using nothing but the static library for sources
     if True:
@@ -531,12 +574,11 @@ def _build_cplusplus_library_with_tests(
         sharedlib_environment.add_library(intermediate_library_name)
 
         if platform.system() == 'Windows':
-            sharedlib_environment.Append(
-                CXXFLAGS='/Fd"' + os.path.join(base_directory, os.path.splitext(library_path)[0] + '.pdb"')
-            )
-            sharedlib_environment.Append(
-                CFLAGS='/Fd"' + os.path.join(base_directory, os.path.splitext(library_path)[0] + '.pdb"')
-            )
+            if _is_debug_build(environment):
+                pdb_file_path = os.path.splitext(library_path)[0] + '.pdb'
+                environment.Append(CXXFLAGS='/Fd"' + pdb_file_path + '"')
+                environment.Append(CFLAGS='/Fd"' + pdb_file_path + '"')
+
             dummy_path = _put_in_intermediate_path(environment, 'msvc-dllmain-dummy.cpp')
             sources.append(dummy_path)
             create_dummy_file = sharedlib_environment.Command(
@@ -548,15 +590,12 @@ def _build_cplusplus_library_with_tests(
 
             # On Windows, a .PDB file is produced when doing a debug build
             if _is_debug_build(environment):
-                environment.SideEffect(
-                    os.path.splitext(library_path)[0] + '.pdb', compile_share_library
-                )
+                build_debug_database = environment.SideEffect(pdb_file_path, compile_shared_library)
 
         else:
             sharedlib_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
             sharedlib_environment.Append(CFLAGS='-fpic') # Use position-independent code
             compile_shared_library = sharedlib_environment.SharedLibrary(library_path, sources)
-
 
     if True:
         executable_name = cplusplus.get_platform_specific_executable_name(
@@ -575,12 +614,12 @@ def _build_cplusplus_library_with_tests(
 
         if platform.system() == 'Windows':
             executable_environment.Append(LINKFLAGS="/SUBSYSTEM:CONSOLE")
-            executable_environment.Append(
-                CXXFLAGS='/Fd"' + os.path.join(base_directory, os.path.splitext(executable_path)[0] + '.pdb"')
-            )
-            executable_environment.Append(
-                CFLAGS='/Fd"' + os.path.join(base_directory, os.path.splitext(executable_path)[0] + '.pdb"')
-            )
+
+            if _is_debug_build(environment):
+                pdb_file_path = os.path.splitext(executable_path)[0] + '.pdb'
+                environment.Append(CXXFLAGS='/Fd"' + pdb_file_path + '"')
+                environment.Append(CFLAGS='/Fd"' + pdb_file_path + '"')
+                # os.path.join(base_directory, os.path.splitext(executable_path)[0] + '.pdb'
         else:
             executable_environment.add_library('pthread') # Needed by googletest
             executable_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
@@ -590,10 +629,20 @@ def _build_cplusplus_library_with_tests(
 
         compile_unit_tests = executable_environment.Program(executable_path, test_sources)
 
+        # On Windows, a .PDB file is produced when doing a debug build
+        if _is_debug_build(environment):
+            build_test_debug_database = environment.SideEffect(pdb_file_path, compile_unit_tests)
+
     environment.Depends(compile_shared_library, compile_static_library)
     environment.Depends(compile_unit_tests, compile_static_library)
 
-    return [ compile_shared_library, compile_unit_tests ]
+    if (platform.systme() == 'Windows') and _is_debug_build(environment):
+        return [
+            compile_shared_library, compile_unit_tests,
+            build_debug_database, build_test_debug_database
+        ]
+    else:
+        return [ compile_shared_library, compile_unit_tests ]
 
 # ----------------------------------------------------------------------------------------------- #
 
