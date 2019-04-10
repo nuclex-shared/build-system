@@ -618,18 +618,21 @@ def _build_cplusplus_library_with_tests(
                 environment.Append(CXXFLAGS='/Fd"' + pdb_file_path + '"')
                 environment.Append(CFLAGS='/Fd"' + pdb_file_path + '"')
                 # os.path.join(base_directory, os.path.splitext(executable_path)[0] + '.pdb'
-        else:
+
+            compile_unit_tests = executable_environment.Program(executable_path, test_sources)
+
+            # On Windows, a .PDB file is produced when doing a debug build
+            if _is_debug_build(environment):
+                build_test_debug_database = environment.SideEffect(pdb_file_path, compile_unit_tests)
+
+        else: # Default path: everything but Windows
             executable_environment.add_library('pthread') # Needed by googletest
             executable_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
             executable_environment.Append(CXXFLAGS='-fpie') # Use position-independent code
             executable_environment.Append(CFLAGS='-fpic') # Use position-independent code
             executable_environment.Append(CFLAGS='-fpie') # Use position-independent code
 
-        compile_unit_tests = executable_environment.Program(executable_path, test_sources)
-
-        # On Windows, a .PDB file is produced when doing a debug build
-        if _is_debug_build(environment):
-            build_test_debug_database = environment.SideEffect(pdb_file_path, compile_unit_tests)
+            compile_unit_tests = executable_environment.Program(executable_path, test_sources)
 
     environment.Depends(compile_shared_library, compile_static_library)
     environment.Depends(compile_unit_tests, compile_static_library)
