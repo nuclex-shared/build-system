@@ -428,7 +428,7 @@ def _build_cplusplus_library(
     # that a PDB file will be generated. Deal with that.
     if (platform.system() == 'Windows') and _is_debug_build(environment):
         build_debug_database = environment.SideEffect(pdb_file_path, build_library)
-        return [ build_library, build_debug_database ]
+        return build_library + build_debug_database
     else:
         return build_library
 
@@ -467,7 +467,6 @@ def _build_cplusplus_executable(
 
     # On Windows, there is a distinguishment between console (shell) applications
     # and GUI applications. Add the appropriate flag if needed.
-    pdb
     if platform.system() == 'Windows':
         if console:
             environment.Append(LINKFLAGS='/SUBSYSTEM:CONSOLE')
@@ -486,7 +485,7 @@ def _build_cplusplus_executable(
     build_executable = environment.Program(executable_path, sources)
     if (platform.system() == 'Windows') and _is_debug_build(environment):
         build_debug_database = environment.SideEffect(pdb_file_path, build_executable)
-        return [ build_executable, build_debug_database ]
+        return build_executable + build_debug_database
     else:
         return build_executable
 
@@ -529,7 +528,6 @@ def _build_cplusplus_library_with_tests(
     )
 
     base_directory = environment.Dir('.').abspath
-    #base_directory = Dir('.').abspath # Necessary if this is running inside env.SConscript()
 
     # Build a static library that we can reuse for the shared library and test executable
     if True:
@@ -637,12 +635,12 @@ def _build_cplusplus_library_with_tests(
     environment.Depends(compile_unit_tests, compile_static_library)
 
     if (platform.system() == 'Windows') and _is_debug_build(environment):
-        return [
-            compile_shared_library, compile_unit_tests,
-            build_debug_database, build_test_debug_database
-        ]
+        return (
+            compile_shared_library + build_debug_database +
+            compile_unit_tests + build_test_debug_database
+        )
     else:
-        return [ compile_shared_library, compile_unit_tests ]
+        return compile_shared_library + compile_unit_tests
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -692,7 +690,7 @@ def _build_msbuild_project(environment, msbuild_project_path):
         environment['INTERMEDIATE_DIRECTORY'], build_directory_name
     )
 
-    environment.MSBuild(
+    return environment.MSBuild(
         msbuild_project_file.srcnode().abspath,
         intermediate_build_directory
     )
@@ -702,7 +700,16 @@ def _build_msbuild_project(environment, msbuild_project_path):
 def _build_msbuild_project_with_tests(
     environment, msbuild_project_path, tests_msbuild_project_path
 ):
-    _build_msbuild_project(environment, msbuild_project_path)
+    """Builds an MSBuild project and its associated unit test project
+
+    @param  environment                 Environment the MSBuild project will be compiled in
+    @param  msbuild_project_path        Path to the MSBuild project file that will be built
+    @param  tests_msbuild_project_path  Path of the MSBuild project for the unit tests"""
+
+    build_main = _build_msbuild_project(environment, msbuild_project_path)
+    build_tests = _build_msbuild_project(environment, tests_msbuild_project_path)
+
+    return build_main + build_tests
 
 # ----------------------------------------------------------------------------------------------- #
 
