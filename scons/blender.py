@@ -33,8 +33,8 @@ def register_extension_methods(environment):
     environment.AddMethod(_export_fbx, "export_fbx")
     environment.AddMethod(_export_collada, "export_collada")
     environment.AddMethod(_export_gltf, "export_gltf")
-    environment.AddMethod(_export_animations_fbx, "export_animations_fbx_or_collada")
-    environment.AddMethod(_export_animations_collada, "export_animations_fbx_or_collada")
+    environment.AddMethod(_export_animations_fbx_or_collada, "export_animations_fbx")
+    environment.AddMethod(_export_animations_fbx_or_collada, "export_animations_collada")
     environment.AddMethod(_export_animations_gltf, "export_animations_gltf")
 
 # ----------------------------------------------------------------------------------------------- #
