@@ -87,6 +87,9 @@ def _main():
         print('\t\033[94m' + mesh.name + '\033[0m')
         _apply_all_modifiers_except_armature(mesh);
 
+    # If any masks didn't have matches, tell the user
+    _print_masks_not_matching_masks(export_masks)
+
     # Figure out which export format the user wants to use
     filename, file_extension = os.path.splitext(outpath)
     file_extension = file_extension.lower()
@@ -172,6 +175,31 @@ def _get_meshes_matching_masks(masks):
                     meshes.append(ob)
 
     return meshes
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _print_masks_not_matching_masks(masks):
+    """Prints all masks not matching any meshes
+
+    @param  masks  Masks to which at least one mesh name each must match"""
+
+    header_printed = False
+
+    for mask in masks:
+        matches_found = False
+
+        for ob in bpy.data.objects:
+            if (ob.type == 'MESH') or (ob.type == 'ARMATURE'):
+                if ob.hide_select == False:
+                    if fnmatch.fnmatch(ob.name, mask):
+                        matches_found = True
+
+        if not matches_found:
+            if not header_printed:
+                print('\033[93mNo meshes matching masks\033[0m')
+                header_printed = True
+
+            print('\t\033[93m' + mask + '\033[0m')
 
 # ----------------------------------------------------------------------------------------------- #
 
