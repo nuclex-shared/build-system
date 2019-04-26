@@ -293,6 +293,8 @@ def _export_animations_fbx_or_collada(
     relative_script_path = os.path.join(own_directory, 'blender-export-animations.py')
     absolute_script_path = environment.File('#' + relative_script_path).srcnode().abspath
 
+    animation_blendfile_path = environment.File(animation_blendfile_path).srcnode().abspath
+
     extra_arguments = str()
     if not (animations is None):
         for animation in animations:
