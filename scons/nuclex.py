@@ -27,10 +27,24 @@ blender = importlib.import_module('blender')
 
 # ----------------------------------------------------------------------------------------------- #
 
+def create_vanilla_environment():
+    """Creates an general-purpose environment without specific support for any
+    programming language or resource/asset system
+
+    @return A new SCons environment without support for specific builds"""
+
+    environment = Environment(
+        variables = _parse_default_command_line_options()
+    )
+
+    return environment
+
+# ----------------------------------------------------------------------------------------------- #
+
 def create_cplusplus_environment():
     """Creates a new environment with the required variables for building C/C++ projects
 
-    @returns A new scons environment set up for C/C++ builds"""
+    @returns A new SCons environment set up for C/C++ builds"""
 
     environment = Environment(
         variables = _parse_default_command_line_options(),

@@ -103,7 +103,7 @@ def enumerate_assets(project_directory, variant_directory = None):
     for root, directory_names, file_names in os.walk(project_directory):
         for file_name in file_names:
             file_title, file_extension = os.path.splitext(file_name)
-            if any(file_extension in s for s in asset_file_extensions):
+            if file_extension and any(file_extension in s for s in asset_file_extensions):
                 if variant_directory is None:
                     headers.append(os.path.join(root, file_name))
                 else:
