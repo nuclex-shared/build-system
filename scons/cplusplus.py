@@ -175,20 +175,22 @@ def get_platform_specific_library_name(universal_library_name, static = False):
       using dots to separate words - for example My.Awesome.Stuff. Depending on the platform,
       this might get turned into My.Awesome.Stuff.dll or libMyAwesomeStuff.so"""
 
-    if platform.system() == 'Linux':
+    if platform.system() == 'Windows':
 
-        # Because Linux tools automatically add 'lib' and '.a'/'.so'
-        return universal_library_name.replace('.', '')
-
-        if static:
-            return 'lib' + universal_library_name.replace('.', '') + '.a'
-        else:
-            return 'lib' + universal_library_name.replace('.', '') + '.so'
-    else:
         if static:
             return universal_library_name + ".lib"
         else:
             return universal_library_name + ".dll"
+
+    else:
+
+        # Because Linux tools automatically add 'lib' and '.a'/'.so'
+        return universal_library_name.replace('.', '')
+
+        #if static:
+        #    return 'lib' + universal_library_name.replace('.', '') + '.a'
+        #else:
+        #    return 'lib' + universal_library_name.replace('.', '') + '.so'
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -202,10 +204,10 @@ def get_platform_specific_executable_name(universal_executable_name):
       using dots to separate words - for example My.Awesome.Program. Depending on the platform,
       this might get turned into My.Awesome.Program.exe or MyAwesomeProgram."""
 
-    if platform.system() == 'Linux':
-        return universal_executable_name.replace('.', '')
-    else:
+    if platform.system() == 'Windows':
         return universal_executable_name + ".exe"
+    else:
+        return universal_executable_name.replace('.', '')
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -361,16 +363,26 @@ def _get_architecture_or_default(environment):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _add_include_directory(environment, include_directory):
+def _add_include_directory(environment, include_directory, system = False):
     """Adds an C/C++ include directory to the build
 
     @param  environment        Environment the C/C++ include directory will be added to
     @param  include_directory  Include directory that will be added
+    @param  system             Whether this is a system header directory
+                               (suppresses warnings for headers you have no control over)
     @remarks
         Consider using add_package() instead to automatically set up all include and
         library directories as well as link the libraries themselves."""
 
-    environment.Append(CPPPATH=[include_directory])
+    if system:
+        if platform.system() == 'Windows':
+            # Supported in recent update to Visual Studio 2017
+            # https://devblogs.microsoft.com/cppblog/broken-warnings-theory/
+            environment.Append(CCFLAGS=('/external:I', include_directory))
+        else:
+            environment.Append(CCFLAGS=('-isystem', include_directory))
+    else:
+        environment.Append(CPPPATH=[include_directory])
 
 # ----------------------------------------------------------------------------------------------- #
 
