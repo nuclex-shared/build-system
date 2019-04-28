@@ -224,6 +224,7 @@ def _register_generic_extension_methods(environment):
     @param  environment  Environment the extension methods will be registered to"""
 
     environment.AddMethod(_build_scons, "build_scons")
+    environment.AddMethod(_is_debug_build, "is_debug_build")
 
 # ----------------------------------------------------------------------------------------------- #
 
