@@ -13,8 +13,8 @@ Helpers for building C/C++ projects with SCons
 
 # ----------------------------------------------------------------------------------------------- #
 
-def register_extension_methods(environment):
-    """Registers extensions methods for C/C++ builds into a SCons environment
+def setup(environment):
+    """Registers extension methods for C/C++ builds into a SCons environment
 
     @param  environment  Environment the extension methods will be registered to"""
 

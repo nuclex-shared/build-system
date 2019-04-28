@@ -12,6 +12,7 @@ from SCons.Variables import PathVariable
 from SCons.Variables import BoolVariable
 from SCons.Script import ARGUMENTS
 from SCons.Script import Dir
+from SCons.Util import WhereIs
 
 # Nuclex SCons libraries
 shared = importlib.import_module('shared')
@@ -27,7 +28,7 @@ blender = importlib.import_module('blender')
 
 # ----------------------------------------------------------------------------------------------- #
 
-def create_vanilla_environment():
+def create_generic_environment():
     """Creates an general-purpose environment without specific support for any
     programming language or resource/asset system
 
@@ -36,6 +37,8 @@ def create_vanilla_environment():
     environment = Environment(
         variables = _parse_default_command_line_options()
     )
+
+    _register_generic_extension_methods(environment)
 
     return environment
 
@@ -56,11 +59,12 @@ def create_cplusplus_environment():
     )
 
     # Extension methods from the C/C== module
-    cplusplus.register_extension_methods(environment)
+    cplusplus.setup(environment)
 
     # Nuclex standard build settings and extensions
     _set_standard_cplusplus_compiler_flags(environment)
     _set_standard_cplusplus_linker_flags(environment)
+    _register_generic_extension_methods(environment)
     _register_cplusplus_extension_methods(environment)
 
     return environment
@@ -83,6 +87,7 @@ def create_dotnet_environment():
     # Register extension methods and additional variables
     dotnet.setup(environment)
 
+    _register_generic_extension_methods(environment)
     _register_dotnet_extension_methods(environment)
 
     return environment
@@ -98,6 +103,7 @@ def create_blender_environment():
         variables = _parse_default_command_line_options()
     )
 
+    _register_generic_extension_methods(environment)
     _register_blender_extension_methods(environment)
 
     return environment
@@ -209,6 +215,15 @@ def _parse_default_command_line_options():
     )
 
     return command_line_variables
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _register_generic_extension_methods(environment):
+    """Registers general-purpose extension methodsinto a SCons environment
+
+    @param  environment  Environment the extension methods will be registered to"""
+
+    environment.AddMethod(_build_scons, "build_scons")
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -347,6 +362,50 @@ def _set_standard_cplusplus_linker_flags(environment):
     else:
         environment.Append(LINKFLAGS='-z defs') # Detect unresolved symbols in shared object
         environment.Append(LINKFLAGS='-Bsymbolic') # Prevent replacement on shared object syms
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _build_scons(environment, source, arguments, target):
+    """Builds another SCons script.
+
+    @param  environment  Environment that will be used to search for the SCons executable
+    @param  source       Input file(s) for the build
+    @param  arguments    Arguments that will be passed to SCons
+    @param  target       Output file(s) produced by the build
+    @returns A scons build action producing the target file"""
+
+    # Clone the environment and use the real search PATH. This will not pollute
+    # the environment in which the SCons subprocess runs, but is the only way
+    # to invoke SCons in Windows because it's a batch file that exepcts Python
+    # to also be in the system search PATH.
+    cloned_environment = environment.Clone(ENV=os.environ)
+
+    # Try to locate SCons with the environment's new search path
+    scons_path = cloned_environment.WhereIs('scons')
+
+    # If not found, try with SCons.Util.WhereIs() which actually works differently
+    # from environment.WhereIs()...
+    if scons_path is None:
+        scons_path = WhereIs('scons')
+
+    # Still not found? Just blindly shout 'scons' and if it fails that will
+    # at least produce a meaningful error message that might make the user add
+    # SCons to the system search PATH.
+    if scons_path is None:
+        scons_path = 'scons'
+
+    if platform.system() == 'Windows':
+        return cloned_environment.Command(
+            source = source,
+            action = '"' + scons_path + '" ' + arguments,
+            target = target
+        )
+    else:
+        return cloned_environment.Command(
+            source = source,
+            action = scons_path + ' ' + arguments,
+            target = target
+        )
 
 # ----------------------------------------------------------------------------------------------- #
 
