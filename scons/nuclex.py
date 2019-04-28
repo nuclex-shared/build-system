@@ -287,23 +287,23 @@ def _set_standard_cplusplus_compiler_flags(environment):
         environment.Append(CXXFLAGS='/W4') # Show all warnings
         environment.Append(CXXFLAGS='/GS-') # No buffer security checks (we make games!)
         environment.Append(CXXFLAGS='/GR') # Generate RTTI for dynamic_cast and type_info
-        environment.Append(CXXFLAGS='/FS') # Support shared writing to the PDB file
 
         environment.Append(CFLAGS='/GF') # String pooling in debug and release
         #environment.Append(CFLAGS='/Gv') # Vectorcall for speed
         environment.Append(CFLAGS='/utf-8') # Source code and outputs are UTF-8 encoded
         environment.Append(CFLAGS='/W4') # Show all warnings
         environment.Append(CFLAGS='/GS-') # No buffer security checks (we make games!)
-        environment.Append(CFLAGS='/FS') # Support shared writing to the PDB file
 
         if _is_debug_build(environment):
             environment.Append(CXXFLAGS='/Od') # No optimization for debugging
             environment.Append(CXXFLAGS='/MDd') # Link shared multithreaded debug runtime
             environment.Append(CXXFLAGS='/Zi') # Generate complete debugging information
+            environment.Append(CXXFLAGS='/FS') # Support shared writing to the PDB file
 
             environment.Append(CFLAGS='/Od') # No optimization for debugging
             environment.Append(CFLAGS='/MDd') # Link shared multithreaded debug runtime
             environment.Append(CFLAGS='/Zi') # Generate complete debugging information
+            environment.Append(CFLAGS='/FS') # Support shared writing to the PDB file
         else:
             environment.Append(CXXFLAGS='/O2') # Optimize for speed
             environment.Append(CXXFLAGS='/Gy') # Function-level linking for better trimming
@@ -485,8 +485,9 @@ def _build_cplusplus_library(
     if platform.system() == 'Windows':
         if _is_debug_build(environment):
             pdb_file_path = os.path.splitext(library_path)[0] + '.pdb'
-            environment.Append(CXXFLAGS='/Fd"' + pdb_file_path + '"')
-            environment.Append(CFLAGS='/Fd"' + pdb_file_path + '"')
+            pdb_file_absolute_path = environment.File(pdb_file_path).srcnode().abspath
+            environment.Append(CXXFLAGS='/Fd"' + pdb_file_absolute_path + '"')
+            environment.Append(CFLAGS='/Fd"' + pdb_file_absolute_path + '"')
     else:
         environment.Append(CXXFLAGS='-fpic') # Use position-independent code
         environment.Append(CFLAGS='-fpic') # Use position-independent code
@@ -501,7 +502,7 @@ def _build_cplusplus_library(
     # If we're on Windows, a side effect of building a library in debug mode is
     # that a PDB file will be generated. Deal with that.
     if (platform.system() == 'Windows') and _is_debug_build(environment):
-        build_debug_database = environment.SideEffect(pdb_file_path, build_library)
+        build_debug_database = environment.SideEffect(pdb_file_absolute_path, build_library)
         return build_library + build_debug_database
     else:
         return build_library
@@ -547,8 +548,9 @@ def _build_cplusplus_executable(
 
         if _is_debug_build(environment):
             pdb_file_path = os.path.splitext(executable_path)[0] + '.pdb'
-            environment.Append(CXXFLAGS='/Fd"' + pdb_file_path + '"')
-            environment.Append(CFLAGS='/Fd"' + pdb_file_path + '"')
+            pdb_file_absolute_path = environment.File(pdb_file_path).srcnode().abspath
+            environment.Append(CXXFLAGS='/Fd"' + pdb_file_absolute_path + '"')
+            environment.Append(CFLAGS='/Fd"' + pdb_file_absolute_path + '"')
     else:
         environment.Append(CXXFLAGS='-fpic') # Use position-independent code
         environment.Append(CXXFLAGS='-fpie') # Use position-independent code
@@ -558,7 +560,7 @@ def _build_cplusplus_executable(
     # Build the executable
     build_executable = environment.Program(executable_path, sources)
     if (platform.system() == 'Windows') and _is_debug_build(environment):
-        build_debug_database = environment.SideEffect(pdb_file_path, build_executable)
+        build_debug_database = environment.SideEffect(pdb_file_absolute_path, build_executable)
         return build_executable + build_debug_database
     else:
         return build_executable
@@ -619,8 +621,9 @@ def _build_cplusplus_library_with_tests(
         if platform.system() == 'Windows':
             if _is_debug_build(environment):
                 pdb_file_path = os.path.splitext(intermediate_library_path)[0] + '.pdb'
-                staticlib_environment.Append(CXXFLAGS='/Fd"' + pdb_file_path + '"')
-                staticlib_environment.Append(CFLAGS='/Fd"' + pdb_file_path + '"')
+                pdb_file_absolute_path = environment.File(pdb_file_path).srcnode().abspath
+                staticlib_environment.Append(CXXFLAGS='/Fd"' + pdb_file_absolute_path + '"')
+                staticlib_environment.Append(CFLAGS='/Fd"' + pdb_file_absolute_path + '"')
         else:
             staticlib_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
             staticlib_environment.Append(CFLAGS='-fpic') # Use position-independent code
@@ -629,7 +632,7 @@ def _build_cplusplus_library_with_tests(
             intermediate_library_path, sources
         )
         if (platform.system() == 'Windows') and _is_debug_build(environment):
-            staticlib_environment.SideEffect(pdb_file_path, compile_static_library)
+            staticlib_environment.SideEffect(pdb_file_absolute_path, compile_static_library)
 
     # Build a shared library using nothing but the static library for sources
     if True:
@@ -648,8 +651,9 @@ def _build_cplusplus_library_with_tests(
         if platform.system() == 'Windows':
             if _is_debug_build(environment):
                 pdb_file_path = os.path.splitext(library_path)[0] + '.pdb'
-                environment.Append(CXXFLAGS='/Fd"' + pdb_file_path + '"')
-                environment.Append(CFLAGS='/Fd"' + pdb_file_path + '"')
+                pdb_file_absolute_path = environment.File(pdb_file_path).srcnode().abspath
+                sharedlib_environment.Append(CXXFLAGS='/Fd"' + pdb_file_absolute_path + '"')
+                sharedlib_environment.Append(CFLAGS='/Fd"' + pdb_file_absolute_path + '"')
 
             dummy_path = _put_in_intermediate_path(environment, 'msvc-dllmain-dummy.cpp')
             sources.append(dummy_path)
@@ -662,7 +666,9 @@ def _build_cplusplus_library_with_tests(
 
             # On Windows, a .PDB file is produced when doing a debug build
             if _is_debug_build(environment):
-                build_debug_database = environment.SideEffect(pdb_file_path, compile_shared_library)
+                build_debug_database = environment.SideEffect(
+                    pdb_file_absolute_path, compile_shared_library
+                )
 
         else:
             sharedlib_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
@@ -689,15 +695,18 @@ def _build_cplusplus_library_with_tests(
 
             if _is_debug_build(environment):
                 pdb_file_path = os.path.splitext(executable_path)[0] + '.pdb'
-                environment.Append(CXXFLAGS='/Fd"' + pdb_file_path + '"')
-                environment.Append(CFLAGS='/Fd"' + pdb_file_path + '"')
+                pdb_file_absolute_path = environment.File(pdb_file_path).srcnode().abspath
+                executable_environment.Append(CXXFLAGS='/Fd"' + pdb_file_absolute_path + '"')
+                executable_environment.Append(CFLAGS='/Fd"' + pdb_file_absolute_path + '"')
                 # os.path.join(base_directory, os.path.splitext(executable_path)[0] + '.pdb'
 
             compile_unit_tests = executable_environment.Program(executable_path, test_sources)
 
             # On Windows, a .PDB file is produced when doing a debug build
             if _is_debug_build(environment):
-                build_test_debug_database = environment.SideEffect(pdb_file_path, compile_unit_tests)
+                build_test_debug_database = environment.SideEffect(
+                    pdb_file_absolute_path, compile_unit_tests
+                )
 
         else: # Default path: everything but Windows
             executable_environment.add_library('pthread') # Needed by googletest
