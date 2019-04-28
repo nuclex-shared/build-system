@@ -273,7 +273,8 @@ def _export_scene_to_collada(outpath, selected_objects_only = True):
         use_exclude_ctrl_bones=True,
         use_anim=True,
         use_anim_action_all=True,
-        use_metadata=True
+        use_metadata=True,
+        use_triangles=True
     )
 
 # ----------------------------------------------------------------------------------------------- #
