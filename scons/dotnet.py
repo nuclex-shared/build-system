@@ -23,7 +23,7 @@ _windows_x86_msbuild_paths = {
         '%ProgramFiles(x86)%\\Microsoft Visual Studio\\2017\\Community\\MSBuild\\15.0\\Bin\\MSBuild.exe',
         '%ProgramFiles(x86)%\\Microsoft Visual Studio\\2017\\Professional\\MSBuild\\15.0\\Bin\\MSBuild.exe',
         '%ProgramFiles(x86)%\\Microsoft Visual Studio\\2017\\Enterprise\\MSBuild\\15.0\\Bin\\MSBuild.exe',
-        'C:\\Program Files (x86)\\MSBuild\\14.0\\Bin\\MSBuild.exe'
+        '%ProgramFiles(x86)%\\MSBuild\\14.0\\Bin\\MSBuild.exe'
     ]
 }
 
@@ -42,7 +42,7 @@ _windows_amd64_msbuild_paths = {
         '%ProgramFiles(x86)%\\Microsoft Visual Studio\\2017\\Community\\MSBuild\\15.0\\Bin\\amd64\\MSBuild.exe',
         '%ProgramFiles(x86)%\\Microsoft Visual Studio\\2017\\Professional\\MSBuild\\15.0\\Bin\\amd64\\MSBuild.exe',
         '%ProgramFiles(x86)%\\Microsoft Visual Studio\\2017\\Enterprise\\MSBuild\\15.0\\Bin\\amd64\\MSBuild.exe',
-        'C:\\Program Files (x86)\\MSBuild\\14.0\\Bin\\amd64\\MSBuild.exe'
+        '%ProgramFiles(x86)%\\MSBuild\\14.0\\Bin\\amd64\\MSBuild.exe'
     ]
 }
 

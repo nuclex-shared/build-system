@@ -52,67 +52,6 @@ def register_extension_methods(environment):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _enumerate_subdirectories(root_directory, ignored_directories=['bin', 'obj']):
-    """Enumerates the subdirectories inside a directory
-
-    @param  root_directory       Directory whose direct subdirectories will be enumerated
-    @param  ignored_directories  Directories to ignore if encountered"""
-
-    directories = []
-
-    for entry in os.listdir(root_directory):
-        if os.path.isdir(entry):
-            if not any(entry in s for s in ignored_directories):
-                directories.append(entry)
-
-    return directories
-
-# ----------------------------------------------------------------------------------------------- #
-
-def enumerate_assets(project_directory, variant_directory = None):
-    """Forms a list of all Godot assets in a directory
-
-    @param  project_directory     Directory containing the headers
-    @param  variant_directory    Variant directory to which source paths will be rewritten"""
-
-    # TODO: manually traverse directory levels and honor .gdignore files?
-    # TODO: don't filter by file extensions, everything in a project directory is an asset?
-
-    asset_file_extensions = [
-        '.tscn',
-        '.escn',
-        '.scn',
-        '.tres',
-        '.res',
-        '.dae',
-        '.obj',
-        '.wav',
-        '.ogg',
-        '.png',
-        '.tga',
-        '.tif',
-        '.jpg',
-        '.ttf',
-        '.font',
-        '.import'
-    ]
-
-    assets = []
-
-    # Form a list of all files in the input directories recursively.
-    for root, directory_names, file_names in os.walk(project_directory):
-        for file_name in file_names:
-            file_title, file_extension = os.path.splitext(file_name)
-            if file_extension and any(file_extension in s for s in asset_file_extensions):
-                if variant_directory is None:
-                    headers.append(os.path.join(root, file_name))
-                else:
-                    headers.append(os.path.join(variant_directory, os.path.join(root, file_name)))
-
-    return assets
-
-# ----------------------------------------------------------------------------------------------- #
-
 def _get_all_assets(root_directory):
     """Recursively fetches all assets that might be processed by Godot. Honors
     .gdignore files.
@@ -133,11 +72,30 @@ def _get_all_assets(root_directory):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _recursively_collect_build_assets(assets, directory):
+def _recursively_collect_assets(assets, directory):
     """Recursively searches for Godot asserts and adds them to the provided list
 
     @param  assets     List to which any discovered assets will be added
     @param  directory  Directory from which on the method will recursively search"""
+
+    asset_file_extensions = [
+        '.tscn',
+        '.escn',
+        '.scn',
+        '.tres',
+        '.res',
+        '.dae',
+        '.obj',
+        '.wav',
+        '.ogg',
+        '.png',
+        '.tga',
+        '.tif',
+        '.jpg',
+        '.ttf',
+        '.font',
+        '.import'
+    ]
 
     # If this directory contains a .gdignore file, don't process it
     gd_ignore_file = os.path.join(directory, ".gdignore")
@@ -150,7 +108,7 @@ def _recursively_collect_build_assets(assets, directory):
             _recursively_collect_build_scripts(scripts, path)
         elif os.path.isfile(path):
             file_title, file_extension = os.path.splitext(file_name)
-            if any(file_extension in s for s in asset_file_extensions):
+            if file_extension and any(file_extension in s for s in asset_file_extensions):
                 assets.append(path)
 
 # ----------------------------------------------------------------------------------------------- #
