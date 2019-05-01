@@ -113,6 +113,48 @@ def enumerate_assets(project_directory, variant_directory = None):
 
 # ----------------------------------------------------------------------------------------------- #
 
+def _get_all_assets(root_directory):
+    """Recursively fetches all assets that might be processed by Godot. Honors
+    .gdignore files.
+
+    @param  root_directory  Directory below which all assets will be found
+    @return A list of all asset files"""
+
+    assets = []
+
+    for entry in os.listdir(root_directory):
+        path = os.path.join(root_directory, entry)
+        if os.path.isdir(path):
+            _recursively_collect_assets(assets, path)
+
+    #scripts.reverse()
+
+    return assets
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _recursively_collect_build_assets(assets, directory):
+    """Recursively searches for Godot asserts and adds them to the provided list
+
+    @param  assets     List to which any discovered assets will be added
+    @param  directory  Directory from which on the method will recursively search"""
+
+    # If this directory contains a .gdignore file, don't process it
+    gd_ignore_file = os.path.join(directory, ".gdignore")
+    if os.path.isfile(gd_ignore_file):
+        return
+
+    for entry in os.listdir(directory):
+        path = os.path.join(directory, entry)
+        if os.path.isdir(path):
+            _recursively_collect_build_scripts(scripts, path)
+        elif os.path.isfile(path):
+            file_title, file_extension = os.path.splitext(file_name)
+            if any(file_extension in s for s in asset_file_extensions):
+                assets.append(path)
+
+# ----------------------------------------------------------------------------------------------- #
+
 def _find_godot_executable(godot_version):
     """Locates a suitable Godot executable on the current system.
 

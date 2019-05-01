@@ -67,8 +67,6 @@ def setup(environment):
     )
     environment.Append(SCANNERS = msbuild_scanner)
 
-    #environment.AddMethod(_compile_cli_application, "CliProgram")
-    #environment.AddMethod(_compile_cli_library, "CliLibrary")
     environment.AddMethod(_call_msbuild, "MSBuild")
     environment.AddMethod(_get_build_directory_name, "get_build_directory_name")
 
@@ -154,7 +152,7 @@ def _find_msbuild_executable(environment, msbuild_version):
         # If a specific msbuild version was requested, look for it in its known path
         for candidate in _windows_amd64_msbuild_paths[msbuild_version]:
             if os.path.isfile(candidate):
-                return file
+                return candidate
 
     else:
 
