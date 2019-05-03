@@ -29,12 +29,20 @@ _godot_executables = {
         'Godot_v3.0.6-stable_win64.exe'
     ],
     '3.1': [
+        'Godot_v3.1.1-stable_linux_headless.64',
+        'Godot_v3.1.1-stable_x11.64',
+        'Godot_v3.1.1-stable_win64.exe',
         'Godot_v3.1-stable_linux_headless.64',
         'Godot_v3.1-stable_x11.64',
         'Godot_v3.1-stable_win64.exe'
     ],
     'git': [
-        'godot_headless.x11.opt.tools.64'
+        'godot_headless.x11.tools.64',
+        'godot_headless.x11.opt.tools.64',
+        'godot.x11.tools.64',
+        'godot.x11.opt.tools.64',
+        'godot.windows.tools.64.exe',
+        'godot.windows.opt.tools.64.exe'
     ]
 }
 
@@ -43,12 +51,13 @@ _default_godot_version = '3.1'
 
 # ----------------------------------------------------------------------------------------------- #
 
-def register_extension_methods(environment):
-    """Registers extensions methods for Godot builds into a SCons environment
+def setup(environment):
+    """Registers extension methods for Godot builds into a SCons environment
 
     @param  environment  Environment the extension methods will be registered to"""
 
     environment.AddMethod(_export_project, "export_project")
+    environment.AddMethod(_call_godot, "call_godot")
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -61,12 +70,9 @@ def _get_all_assets(root_directory):
 
     assets = []
 
-    for entry in os.listdir(root_directory):
-        path = os.path.join(root_directory, entry)
-        if os.path.isdir(path):
-            _recursively_collect_assets(assets, path)
+    _recursively_collect_assets(assets, root_directory)
 
-    #scripts.reverse()
+    #assets.reverse()
 
     return assets
 
@@ -157,6 +163,34 @@ def _find_godot_executable(godot_version):
                 return candidate_path
 
     return None
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _call_godot(environment, source, arguments, target):
+    """Runs the Godot executable with the specified command line arguments
+
+    @param  environment  Environment in which the Godot executable will be run
+    @param  source       Input files that will be involved
+    @param  arguments    Arguments that will be passed to the Godot executable
+    @param  target       Output files that should result from the call"""
+
+    if 'GODOT_EXECUTABLE' in environment:
+        godot_excutable = environment['GODOT_EXECUTABLE']
+    else:
+        if 'GODOT_VERSION' in environment:
+            godot_version = environment['GODOT_VERSION']
+        else:
+            godot_version = _default_godot_version
+
+        godot_executable = _find_godot_executable(godot_version)
+        #environment['GODOT_EXECUTABLE'] = godot_executable
+
+    #if source is None:
+    #    source = godot_executable
+
+    return environment.Command(
+        target, source, '"' + godot_executable + '" ' + arguments
+    )
 
 # ----------------------------------------------------------------------------------------------- #
 

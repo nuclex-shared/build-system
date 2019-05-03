@@ -25,7 +25,7 @@ _default_blender_version = '2.7'
 
 # ----------------------------------------------------------------------------------------------- #
 
-def register_extension_methods(environment):
+def setup(environment):
     """Registers extension methods for Blender exporting into a SCons environment
 
     @param  environment  Environment the extension methods will be registered to"""
