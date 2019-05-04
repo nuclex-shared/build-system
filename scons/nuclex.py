@@ -289,7 +289,7 @@ def _register_godot_extension_methods(environment):
 
     @param  environment  Environment the extension methods will be registered to"""
 
-    #blender.register_extension_methods(environment)
+    #godot.register_extension_methods(environment)
     pass
 
 # ----------------------------------------------------------------------------------------------- #
