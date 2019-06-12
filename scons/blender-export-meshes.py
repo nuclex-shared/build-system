@@ -80,27 +80,28 @@ def _main():
 
     _clear_selection() # clear the saved selection
     _select_meshes(meshes_to_export)
+    _clear_translation(meshes_to_export)
 
-    # Apply all modifiers (the Collada exporter has such an option, but it's broken)
-    #
-    # Also requires all meshes to be made unique (not shared between objects) because
-    # otherwise, modifiers cannot be applied
-    print('Applying modifiers:')
-    print('\t\033[94mDuplicating shared meshes for export...\033[0m')
+    # Make all objects use unique meshes (not shared ones) because otherwise,
+    # modifiers cannot be applied
+    print('Duplicating shared mesh data for export...')
     bpy.ops.object.make_single_user(
-        type='SELECTED_OBJECTS', 
-        object=True, 
-        obdata=True, 
-        material=False, 
-        texture=False, 
+        type='SELECTED_OBJECTS',
+        object=True,
+        obdata=True,
+        material=False,
+        texture=False,
         animation=False
     )
+
+    # Apply all modifiers (the Collada exporter has such an option, but it's broken)
+    print('Applying modifiers:')
     for mesh in meshes_to_export:
         print('\t\033[94m' + mesh.name + '\033[0m')
         _apply_all_modifiers_except_armature(mesh);
 
     # If any masks didn't have matches, tell the user
-    _print_masks_not_matching_masks(export_masks)
+    _print_masks_not_matching_anything(export_masks)
 
     # Figure out which export format the user wants to use
     filename, file_extension = os.path.splitext(outpath)
@@ -190,7 +191,7 @@ def _get_meshes_matching_masks(masks):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _print_masks_not_matching_masks(masks):
+def _print_masks_not_matching_anything(masks):
     """Prints all masks not matching any meshes
 
     @param  masks  Masks to which at least one mesh name each must match"""
@@ -222,6 +223,16 @@ def _select_meshes(meshes):
 
     for mesh in meshes:
         mesh.select = True
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _clear_translation(meshes):
+    """Clears the translation of the specified meshes
+
+    @param  meshes  Meshes on which the translation will be cleared"""
+
+    for mesh in meshes:
+        mesh.location = (0.0, 0.0, 0.0)
 
 # ----------------------------------------------------------------------------------------------- #
 
