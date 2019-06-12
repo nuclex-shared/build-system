@@ -82,7 +82,19 @@ def _main():
     _select_meshes(meshes_to_export)
 
     # Apply all modifiers (the Collada exporter has such an option, but it's broken)
+    #
+    # Also requires all meshes to be made unique (not shared between objects) because
+    # otherwise, modifiers cannot be applied
     print('Applying modifiers:')
+    print('\t\033[94mDuplicating shared meshes for export...\033[0m')
+    bpy.ops.object.make_single_user(
+        type='SELECTED_OBJECTS', 
+        object=True, 
+        obdata=True, 
+        material=False, 
+        texture=False, 
+        animation=False
+    )
     for mesh in meshes_to_export:
         print('\t\033[94m' + mesh.name + '\033[0m')
         _apply_all_modifiers_except_armature(mesh);
