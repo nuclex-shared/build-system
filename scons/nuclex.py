@@ -368,11 +368,13 @@ def _set_standard_cplusplus_compiler_flags(environment):
         environment.Append(CFLAGS='-shared-libgcc') # Show all warnings
 
         if _is_debug_build(environment):
-            environment.Append(CXXFLAGS='-Og') # Tailor code for optimal debugging
-            environment.Append(CXXFLAGS='-g') # Generate debugging information
+            #environment.Append(CXXFLAGS='-Og') # Tailor code for optimal debugging
+            environment.Append(CXXFLAGS='-g3') # Generate debugging information
+            environment.Append(CXXFLAGS='-ggdb') # Target the GDB debugger
 
-            environment.Append(CFLAGS='-Og') # Tailor code for optimal debugging
-            environment.Append(CFLAGS='-g') # Generate debugging information
+            #environment.Append(CFLAGS='-Og') # Tailor code for optimal debugging
+            environment.Append(CFLAGS='-g3') # Generate debugging information
+            environment.Append(CFLAGS='-ggdb') # Target the GDB debugger
         else:
             environment.Append(CXXFLAGS='-O3') # Optimize for speed
             environment.Append(CXXFLAGS='-flto') # Merge all code before compiling
