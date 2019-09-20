@@ -313,74 +313,77 @@ def _set_standard_cplusplus_compiler_flags(environment):
     @param  environment  Environment in which the C++ compiler flags wlll be set."""
 
     if platform.system() == 'Windows':
-        environment.Append(CXXFLAGS='/EHsc') # Only C++ exceptions, no Microsoft exceptions
-        environment.Append(CXXFLAGS='/GF') # String pooling in debug and release
-        #environment.Append(CXXFLAGS='/Gv') # Vectorcall for speed
-        environment.Append(CXXFLAGS='/utf-8') # Source code and outputs are UTF-8 encoded
-        environment.Append(CXXFLAGS='/std:c++14') # Use a widely supported but current C++
-        environment.Append(CXXFLAGS='/W4') # Show all warnings
-        environment.Append(CXXFLAGS='/GS-') # No buffer security checks (we make games!)
-        environment.Append(CXXFLAGS='/GR') # Generate RTTI for dynamic_cast and type_info
-
         environment.Append(CFLAGS='/GF') # String pooling in debug and release
         #environment.Append(CFLAGS='/Gv') # Vectorcall for speed
         environment.Append(CFLAGS='/utf-8') # Source code and outputs are UTF-8 encoded
         environment.Append(CFLAGS='/W4') # Show all warnings
         environment.Append(CFLAGS='/GS-') # No buffer security checks (we make games!)
+        environment.Append(CFLAGS='/fp:fast') # Allow floating point optimizations
+
+        environment.Append(CXXFLAGS='/GF') # String pooling in debug and release
+        #environment.Append(CXXFLAGS='/Gv') # Vectorcall for speed
+        environment.Append(CXXFLAGS='/utf-8') # Source code and outputs are UTF-8 encoded
+        environment.Append(CXXFLAGS='/W4') # Show all warnings
+        environment.Append(CXXFLAGS='/GS-') # No buffer security checks (we make games!)
+        environment.Append(CXXFLAGS='/fp:fast') # Allow floating point optimizations
+        environment.Append(CXXFLAGS='/EHsc') # Only C++ exceptions, no Microsoft exceptions
+        environment.Append(CXXFLAGS='/std:c++14') # Use a widely supported but current C++
+        environment.Append(CXXFLAGS='/GR') # Generate RTTI for dynamic_cast and type_info
 
         if _is_debug_build(environment):
-            environment.Append(CXXFLAGS='/Od') # No optimization for debugging
-            environment.Append(CXXFLAGS='/MDd') # Link shared multithreaded debug runtime
-            environment.Append(CXXFLAGS='/Zi') # Generate complete debugging information
-            environment.Append(CXXFLAGS='/FS') # Support shared writing to the PDB file
-
             environment.Append(CFLAGS='/Od') # No optimization for debugging
             environment.Append(CFLAGS='/MDd') # Link shared multithreaded debug runtime
             environment.Append(CFLAGS='/Zi') # Generate complete debugging information
             environment.Append(CFLAGS='/FS') # Support shared writing to the PDB file
-        else:
-            environment.Append(CXXFLAGS='/O2') # Optimize for speed
-            environment.Append(CXXFLAGS='/Gy') # Function-level linking for better trimming
-            environment.Append(CXXFLAGS='/GL') # Whole program optimizaton (merged build)
-            environment.Append(CXXFLAGS='/MD') # Link shared multithreaded release runtime
-            environment.Append(CXXFLAGS='/Gw') # Enable whole-program *data* optimization
 
+            environment.Append(CXXFLAGS='/Od') # No optimization for debugging
+            environment.Append(CXXFLAGS='/MDd') # Link shared multithreaded debug runtime
+            environment.Append(CXXFLAGS='/Zi') # Generate complete debugging information
+            environment.Append(CXXFLAGS='/FS') # Support shared writing to the PDB file
+        else:
             environment.Append(CFLAGS='/O2') # Optimize for speed
             environment.Append(CFLAGS='/Gy') # Function-level linking for better trimming
             environment.Append(CFLAGS='/GL') # Whole program optimizaton (merged build)
             environment.Append(CFLAGS='/MD') # Link shared multithreaded release runtime
             environment.Append(CFLAGS='/Gw') # Enable whole-program *data* optimization
 
-    else:
-        environment.Append(CXXFLAGS='-std=c++14') # Use a widely supported but current C++
-        environment.Append(CXXFLAGS='-fvisibility=hidden') # Default visibility: don't export
-        environment.Append(CXXFLAGS='-Wpedantic') # Enable all ISO C++ deviation warnings
-        environment.Append(CXXFLAGS='-Wall') # Show all warnings
-        environment.Append(CXXFLAGS='-Wno-unknown-pragmas') # Don't warn about #pragma region
-        #environment.Append(CXXFLAGS=['-flinker-output=pie']) # Position-independent executable
-        environment.Append(CXXFLAGS='-shared-libgcc') # Show all warnings
+            environment.Append(CXXFLAGS='/O2') # Optimize for speed
+            environment.Append(CXXFLAGS='/Gy') # Function-level linking for better trimming
+            environment.Append(CXXFLAGS='/GL') # Whole program optimizaton (merged build)
+            environment.Append(CXXFLAGS='/MD') # Link shared multithreaded release runtime
+            environment.Append(CXXFLAGS='/Gw') # Enable whole-program *data* optimization
 
+    else:
         environment.Append(CFLAGS='-fvisibility=hidden') # Default visibility: don't export
         environment.Append(CFLAGS='-Wpedantic') # Enable all ISO C++ deviation warnings
         environment.Append(CFLAGS='-Wall') # Show all warnings
         environment.Append(CFLAGS='-Wno-unknown-pragmas') # Don't warn about #pragma region
         #environment.Append(CFLAGS=['-flinker-output=pie']) # Position-independent executable
-        environment.Append(CFLAGS='-shared-libgcc') # Show all warnings
+        environment.Append(CFLAGS='-shared-libgcc') # Use shared C/C++ runtime library
+
+        environment.Append(CXXFLAGS='-fvisibility=hidden') # Default visibility: don't export
+        environment.Append(CXXFLAGS='-Wpedantic') # Enable all ISO C++ deviation warnings
+        environment.Append(CXXFLAGS='-Wall') # Show all warnings
+        environment.Append(CXXFLAGS='-Wno-unknown-pragmas') # Don't warn about #pragma region
+        #environment.Append(CXXFLAGS=['-flinker-output=pie']) # Position-independent executable
+        environment.Append(CXXFLAGS='-shared-libgcc') # Use shared C/C++ runtime library
+        environment.Append(CXXFLAGS='-std=c++14') # Use a widely supported but current C++
+
 
         if _is_debug_build(environment):
-            #environment.Append(CXXFLAGS='-Og') # Tailor code for optimal debugging
-            environment.Append(CXXFLAGS='-g3') # Generate debugging information
-            environment.Append(CXXFLAGS='-ggdb') # Target the GDB debugger
-
             #environment.Append(CFLAGS='-Og') # Tailor code for optimal debugging
             environment.Append(CFLAGS='-g3') # Generate debugging information
             environment.Append(CFLAGS='-ggdb') # Target the GDB debugger
-        else:
-            environment.Append(CXXFLAGS='-O3') # Optimize for speed
-            environment.Append(CXXFLAGS='-flto') # Merge all code before compiling
 
+            #environment.Append(CXXFLAGS='-Og') # Tailor code for optimal debugging
+            environment.Append(CXXFLAGS='-g3') # Generate debugging information
+            environment.Append(CXXFLAGS='-ggdb') # Target the GDB debugger
+        else:
             environment.Append(CFLAGS='-O3') # Optimize for speed
             environment.Append(CFLAGS='-flto') # Merge all code before compiling
+
+            environment.Append(CXXFLAGS='-O3') # Optimize for speed
+            environment.Append(CXXFLAGS='-flto') # Merge all code before compiling
 
 # ----------------------------------------------------------------------------------------------- #
 
