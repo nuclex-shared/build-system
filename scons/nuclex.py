@@ -592,9 +592,9 @@ def _build_cplusplus_executable(
             environment.Append(CFLAGS='/Fd"' + pdb_file_absolute_path + '"')
     else:
         environment.Append(CXXFLAGS='-fpic') # Use position-independent code
-        environment.Append(CXXFLAGS='-fpie') # Use position-independent code
+        environment.Append(CXXFLAGS='-fpie') # Use position-independent executable
         environment.Append(CFLAGS='-fpic') # Use position-independent code
-        environment.Append(CFLAGS='-fpie') # Use position-independent code
+        environment.Append(CFLAGS='-fpie') # Use position-independent executable
 
     # Build the executable
     build_executable = environment.Program(executable_path, sources)
