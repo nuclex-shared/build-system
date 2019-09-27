@@ -342,12 +342,16 @@ def _set_standard_cplusplus_compiler_flags(environment):
             environment.Append(CXXFLAGS='/FS') # Support shared writing to the PDB file
         else:
             environment.Append(CFLAGS='/O2') # Optimize for speed
+            environment.Append(CFLAGS='/Oy') # Omit frame pointers
+            environment.Append(CFLAGS='/Oi') # Enable intrinsic functions
             environment.Append(CFLAGS='/Gy') # Function-level linking for better trimming
             environment.Append(CFLAGS='/GL') # Whole program optimizaton (merged build)
             environment.Append(CFLAGS='/MD') # Link shared multithreaded release runtime
             environment.Append(CFLAGS='/Gw') # Enable whole-program *data* optimization
 
             environment.Append(CXXFLAGS='/O2') # Optimize for speed
+            environment.Append(CXXFLAGS='/Oy') # Omit frame pointers
+            environment.Append(CXXFLAGS='/Oi') # Enable intrinsic functions
             environment.Append(CXXFLAGS='/Gy') # Function-level linking for better trimming
             environment.Append(CXXFLAGS='/GL') # Whole program optimizaton (merged build)
             environment.Append(CXXFLAGS='/MD') # Link shared multithreaded release runtime
@@ -355,6 +359,7 @@ def _set_standard_cplusplus_compiler_flags(environment):
 
     else:
         environment.Append(CFLAGS='-fvisibility=hidden') # Default visibility: don't export
+        environment.Append(CFLAGS='-fvisibility-inlines-hidden') # Inline code is also hidden
         environment.Append(CFLAGS='-Wpedantic') # Enable all ISO C++ deviation warnings
         environment.Append(CFLAGS='-Wall') # Show all warnings
         environment.Append(CFLAGS='-Wno-unknown-pragmas') # Don't warn about #pragma region
@@ -362,6 +367,7 @@ def _set_standard_cplusplus_compiler_flags(environment):
         environment.Append(CFLAGS='-shared-libgcc') # Use shared C/C++ runtime library
 
         environment.Append(CXXFLAGS='-fvisibility=hidden') # Default visibility: don't export
+        environment.Append(CXXFLAGS='-fvisibility-inlines-hidden') # Inline code is also hidden
         environment.Append(CXXFLAGS='-Wpedantic') # Enable all ISO C++ deviation warnings
         environment.Append(CXXFLAGS='-Wall') # Show all warnings
         environment.Append(CXXFLAGS='-Wno-unknown-pragmas') # Don't warn about #pragma region
