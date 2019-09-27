@@ -48,6 +48,23 @@ def enumerate_any_files(source_directory, variant_directory = ""):
 
 # ----------------------------------------------------------------------------------------------- #
 
+def put_in_variant_directory(sources, variant_directory):
+    """Adjusts the paths of a series of sources files to a SCons variant directory
+
+    @param  source_directory     Directory containing all of the source files
+    @param  variant_directory    Variant directory to which source paths will be rewritten
+    @returns All provided paths moved into the specified variant directory"""
+
+    files = []
+
+    # Adjust all source paths to the variant directory
+    for source in sources:
+        files.append(os.path.join(variant_directory, source))
+
+    return files
+
+# ----------------------------------------------------------------------------------------------- #
+
 def setup_variant_dirs(
     scons_environment, project_directory, intermediate_directory, ignored_directories
 ):

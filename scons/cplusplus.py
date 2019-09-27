@@ -21,6 +21,7 @@ def setup(environment):
     environment.AddMethod(_add_include_directory, "add_include_directory")
     environment.AddMethod(_add_library_directory, "add_library_directory")
     environment.AddMethod(_add_library, "add_library")
+    environment.AddMethod(_add_preprocessor_constant, "add_preprocessor_constant")
     environment.AddMethod(_get_build_directory_name, "get_build_directory_name")
 
 # ----------------------------------------------------------------------------------------------- #
@@ -132,20 +133,14 @@ def find_or_guess_library_directory(environment, library_builds_path):
         raise FileNotFound('C/C++ compiler could not be found')
 
     major_compiler_version = int(compiler_version[0])
+    minor_compiler_version = int(compiler_version[1])
+
     while major_compiler_version > 6: # We don't serve compilers earlier than this :-)
 
-        # New naming scheme, using only major compiler/toolset version
+        # Look for a build matching the specified compiler version
         library_build_name = _make_build_directory_name(
-            environment, compiler_name, str(major_compiler_version)
-        )
-        candidate = os.path.join(library_builds_path, library_build_name)
-
-        if os.path.isdir(candidate):
-            return candidate
-
-        # Compatibility with existing naming scheme in externals repository
-        library_build_name = _make_build_directory_name(
-            environment, compiler_name, str(major_compiler_version) + '.0'
+            environment, compiler_name,
+            str(major_compiler_version) + '.' + str(minor_compiler_version)
         )
         candidate = os.path.join(library_builds_path, library_build_name)
 
@@ -153,7 +148,10 @@ def find_or_guess_library_directory(environment, library_builds_path):
             return candidate
 
         # Also try builds for previous compiler versions
-        major_compiler_version -= 1
+        if minor_compiler_version > 0:
+            minor_compiler_version -= 1
+        else:
+            major_compiler_version -= 1
 
     # No compiler-specified binaries, give the 'lib' dir a final try
     candidate = os.path.join(library_builds_path, 'lib')
@@ -260,9 +258,7 @@ def get_compiler_version(environment):
             return compiler_version.split('.')
 
         if 'MSVS' in environment:
-            #print(environment['MSVS'])
             cl_install_directory = environment['MSVS']['VCINSTALLDIR']
-            #print(cl_install_directory)
 
         msvc_process = subprocess.Popen(
             [compiler_executable], stdout=subprocess.PIPE
@@ -286,80 +282,6 @@ def get_compiler_version(environment):
 
     version = compiler_version.group().split('.')
     return version
-
-# ----------------------------------------------------------------------------------------------- #
-
-def _get_build_directory_name(environment):
-    """Determines the name of the build directory for the current compiler version
-    and output settings (such as platform and whether it's a debug or release build)
-
-    @param  environment  Environment for which the build directory will be determined
-    @returns The name the build directory should have
-    @remarks
-        The build directory is a directory whose name uniquely identifies the compiler,
-        platform and build configuration used. When shipping cross-platform libraries,
-        for example, a compiled binary of the library can be shipped for each compiler,
-        architecture and build configuration supported, allowing developers to pick
-        the right one to link depending on their system."""
-
-    compiler_name = get_compiler_name(environment)
-    if compiler_name is None:
-        raise FileNotFound("C/C++ compiler could not be found")
-
-    compiler_version = get_compiler_version(environment)
-    if compiler_version is None:
-        raise FileNotFound("C/C++ compiler could not be found")
-
-    return _make_build_directory_name(environment, compiler_name, compiler_version[0])
-
-# ----------------------------------------------------------------------------------------------- #
-
-def _make_build_directory_name(environment, compiler_name, compiler_version):
-    """Forms the build directory name given a compiler name, compiler version,
-    target architecture and build configuration.
-
-    @param  environment       Environment providing additional build settings
-    @param  compiler_name     Name of the compiler that is being used
-    @param  compiler_version  Major version number of the compiler that is being used
-    @returns The build directory name for the specified compiler and architecture"""
-
-    if platform.system() == 'Windows':
-        platform_name = 'windows'
-    else:
-        platform_name = 'linux'
-
-    architecture = _get_architecture_or_default(environment)
-
-    is_debug_build = False
-    if 'DEBUG' in environment:
-        is_debug_build = environment['DEBUG']
-
-    if is_debug_build:
-        build_configuration = 'debug'
-    else:
-        build_configuration = 'release'
-
-    return (
-        platform_name + '-' +
-        compiler_name + compiler_version + '-' +
-        architecture + '-' +
-        build_configuration
-    )
-
-# ----------------------------------------------------------------------------------------------- #
-
-def _get_architecture_or_default(environment):
-    """Returns the current target architecture or the default architecture if none
-    has been explicitly set.
-
-    @param  environment  Environment the target architecture will be looked up from
-    @returns The name of the target architecture from the environment or a default"""
-
-    architecture = environment['TARGET_ARCH']
-    if architecture is None:
-        return 'x64'
-    else:
-        return architecture
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -413,3 +335,116 @@ def _add_library(environment, library_name):
         libMyAwesomeThing.so (the toolchain will automatically try the lib prefix, though)"""
 
     environment.Append(LIBS=[library_name])
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _add_preprocessor_constant(environment, constant_name):
+    """Adds a C/C++ preprocessor constant to the build
+
+    @param  environment    Environment the C/C++ preprocessor constant will be set in
+    @param  constant_name  Name of the preprocessor constant that will be set"""
+
+    environment.Append(CPPDEFINES=[constant_name])
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _get_build_directory_name(environment):
+    """Determines the name of the build directory for the current compiler version
+    and output settings (such as platform and whether it's a debug or release build)
+
+    @param  environment  Environment for which the build directory will be determined
+    @returns The name the build directory should have
+    @remarks
+        The build directory is a directory whose name uniquely identifies the compiler,
+        platform and build configuration used. When shipping cross-platform libraries,
+        for example, a compiled binary of the library can be shipped for each compiler,
+        architecture and build configuration supported, allowing developers to pick
+        the right one to link depending on their system."""
+
+    compiler_name = get_compiler_name(environment)
+    if compiler_name is None:
+        raise FileNotFound("C/C++ compiler could not be found")
+
+    compiler_version = get_compiler_version(environment)
+    if compiler_version is None:
+        raise FileNotFound("C/C++ compiler could not be found")
+
+    if 'INTERMEDIATE_SUFFIX' in environment:
+        suffix = environment['INTERMEDIATE_SUFFIX']
+        return (
+            _make_build_directory_name(environment, compiler_name, compiler_version[0]) + '-' +
+            suffix
+        )
+    else:
+        return _make_build_directory_name(environment, compiler_name, compiler_version[0])
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _make_build_directory_name(
+    environment, compiler_name, compiler_major_version, compiler_minor_version = None
+):
+    """Forms the build directory name given a compiler name, compiler version,
+    target architecture and build configuration.
+
+    @param  environment             Environment providing additional build settings
+    @param  compiler_name           Name of the compiler that is being used
+    @param  compiler_major_version  Major version number of the compiler that is being used
+    @param  compiler_minor_version  Minor version number of the compiler that is being used
+    @returns The build directory name for the specified compiler and architecture
+    @remarks
+        The build directory name is a short string uniquely identifying the target OS,
+        processor architecture, compiler version and build type. It should be sufficient
+        to discriminate between library builds to use when linking third-party libraries
+        and to keep output directories non-overlapping even when compiling for multiple
+        target platforms at the same time.
+
+        Examples: 'linux-gcc7.1-amd64-release' or 'windows-msvc14.1-amd64-debug'"""
+
+    if platform.system() == 'Windows':
+        platform_name = 'windows'
+    else:
+        platform_name = 'linux'
+
+    architecture = _get_architecture_or_default(environment)
+
+    # Determine whether this is a debug builkd
+    is_debug_build = False
+    if 'DEBUG' in environment:
+        is_debug_build = environment['DEBUG']
+
+    # Append either 'debug' or 'release' depending on the build type
+    if is_debug_build:
+        build_configuration = 'debug'
+    else:
+        build_configuration = 'release'
+
+    # Form the complete build directory name
+    if compiler_minor_version is None:
+        return (
+            platform_name + '-' +
+            compiler_name + compiler_major_version + '-' +
+            architecture + '-' +
+            build_configuration
+        )
+    else:
+        return (
+            platform_name + '-' +
+            compiler_name + compiler_major_version + '.' + compiler_minor_version + '-' +
+            architecture + '-' +
+            build_configuration
+        )
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _get_architecture_or_default(environment):
+    """Returns the current target architecture or the default architecture if none
+    has been explicitly set.
+
+    @param  environment  Environment the target architecture will be looked up from
+    @returns The name of the target architecture from the environment or a default"""
+
+    architecture = environment['TARGET_ARCH']
+    if architecture is None:
+        return 'amd64'
+    else:
+        return architecture
