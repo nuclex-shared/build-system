@@ -474,14 +474,18 @@ def _add_cplusplus_package(environment, universal_package_name, universal_librar
     # Path for the package's headers
     include_directory = cplusplus.find_or_guess_include_directory(package_directory)
     if include_directory is None:
-        raise FileNotFoundError('Could not find include directory for package')
+        raise FileNotFoundError(
+        	'Could not find include directory for package in ' + package_directory
+        )
 
     environment.add_include_directory(include_directory)
 
     # Path for the package's libraries
     library_directory = cplusplus.find_or_guess_library_directory(environment, package_directory)
     if library_directory is None:
-        raise FileNotFoundError('Could not find library directory for package')
+        raise FileNotFoundError(
+        	'Could not find library directory for package in ' + package_directory
+        )
 
     environment.add_library_directory(library_directory)
 
@@ -540,6 +544,7 @@ def _build_cplusplus_library(
     # Build either a static or a shared library
     build_library = None
     if static:
+        print('FUCK YOU' + str(static))
         build_library = environment.StaticLibrary(library_path, sources)
     else:
         build_library = environment.SharedLibrary(library_path, sources)
@@ -645,133 +650,40 @@ def _build_cplusplus_library_with_tests(
 
     intermediate_directory = os.path.join(
         environment['INTERMEDIATE_DIRECTORY'],
-        environment.get_build_directory_name()
+        environment.get_variant_directory_name()
     )
 
     base_directory = environment.Dir('.').abspath
 
-    # Build a static library that we can reuse for the shared library and test executable
+    # Build a shared library
     if True:
-        intermediate_library_name = cplusplus.get_platform_specific_library_name(
-            universal_library_name + ".Static", static = True
-        )
-        intermediate_library_path = _put_in_intermediate_path(
-            environment, intermediate_library_name
-        )
-
-        staticlib_environment = environment.Clone();
-        staticlib_environment.add_include_directory(environment['HEADER_DIRECTORY'])
-        #staticlib_environment['PDB'] = os.path.splitext(intermediate_library_path)[0] + '.pdb"'
-
-        if platform.system() == 'Windows':
-            if _is_debug_build(environment):
-                pdb_file_path = os.path.splitext(intermediate_library_path)[0] + '.pdb'
-                pdb_file_absolute_path = environment.File(pdb_file_path).srcnode().abspath
-                staticlib_environment.Append(CXXFLAGS='/Fd"' + pdb_file_absolute_path + '"')
-                staticlib_environment.Append(CFLAGS='/Fd"' + pdb_file_absolute_path + '"')
-        else:
-            staticlib_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
-            staticlib_environment.Append(CFLAGS='-fpic') # Use position-independent code
-
-        compile_static_library = staticlib_environment.StaticLibrary(
-            intermediate_library_path, sources
-        )
-        if (platform.system() == 'Windows') and _is_debug_build(environment):
-            staticlib_environment.SideEffect(pdb_file_absolute_path, compile_static_library)
-
-    # Build a shared library using nothing but the static library for sources
-    if True:
-        sources = [] # We don't use any sources but the static library from above
-
         library_name = cplusplus.get_platform_specific_library_name(universal_library_name)
         library_path = _put_in_intermediate_path(environment, library_name)
 
         sharedlib_environment = environment.Clone();
         sharedlib_environment.add_include_directory(environment['HEADER_DIRECTORY'])
-        #sharedlib_environment['PDB'] = os.path.splitext(library_path)[0] + '.pdb"'
 
-        sharedlib_environment.add_library_directory(intermediate_directory)
-        sharedlib_environment.add_library(intermediate_library_name)
-
-        if platform.system() == 'Windows':
-            if _is_debug_build(environment):
-                pdb_file_path = os.path.splitext(library_path)[0] + '.pdb'
-                pdb_file_absolute_path = environment.File(pdb_file_path).srcnode().abspath
-                sharedlib_environment.Append(CXXFLAGS='/Fd"' + pdb_file_absolute_path + '"')
-                sharedlib_environment.Append(CFLAGS='/Fd"' + pdb_file_absolute_path + '"')
-
-            dummy_path = _put_in_intermediate_path(environment, 'msvc-dllmain-dummy.cpp')
-            sources.append(dummy_path)
-            create_dummy_file = sharedlib_environment.Command(
-                source = [], action = 'echo // > $TARGET', target = dummy_path
-            )
-
-            compile_shared_library = sharedlib_environment.SharedLibrary(library_path, sources)
-            sharedlib_environment.Depends(compile_shared_library, create_dummy_file)
-
-            # On Windows, a .PDB file is produced when doing a debug build
-            if _is_debug_build(environment):
-                build_debug_database = environment.SideEffect(
-                    pdb_file_absolute_path, compile_shared_library
-                )
-
-        else:
-            sharedlib_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
-            sharedlib_environment.Append(CFLAGS='-fpic') # Use position-independent code
-            compile_shared_library = sharedlib_environment.SharedLibrary(library_path, sources)
+        sharedlib_environment
+        compile_shared_library = sharedlib_environment.build_library(
+            universal_library_name, static = False, sources = sources
+        )
 
     if True:
         executable_name = cplusplus.get_platform_specific_executable_name(
             universal_test_executable_name
         )
-        executable_path = _put_in_intermediate_path(environment, executable_name)
 
         executable_environment = environment.Clone()
+        executable_environment['INTERMEDIATE_SUFFIX'] = 'tests'
         executable_environment.add_include_directory(environment['HEADER_DIRECTORY'])
-        #executable_environment['PDB'] = os.path.splitext(executable_path)[0] + '.pdb"'
-
-        executable_environment.add_library_directory(intermediate_directory)
-        executable_environment.add_library(intermediate_library_name)
 
         executable_environment.add_package('gtest', [ 'gtest', 'gtest_main' ])
 
-        if platform.system() == 'Windows':
-            executable_environment.Append(LINKFLAGS="/SUBSYSTEM:CONSOLE")
-
-            if _is_debug_build(environment):
-                pdb_file_path = os.path.splitext(executable_path)[0] + '.pdb'
-                pdb_file_absolute_path = environment.File(pdb_file_path).srcnode().abspath
-                executable_environment.Append(CXXFLAGS='/Fd"' + pdb_file_absolute_path + '"')
-                executable_environment.Append(CFLAGS='/Fd"' + pdb_file_absolute_path + '"')
-                # os.path.join(base_directory, os.path.splitext(executable_path)[0] + '.pdb'
-
-            compile_unit_tests = executable_environment.Program(executable_path, test_sources)
-
-            # On Windows, a .PDB file is produced when doing a debug build
-            if _is_debug_build(environment):
-                build_test_debug_database = environment.SideEffect(
-                    pdb_file_absolute_path, compile_unit_tests
-                )
-
-        else: # Default path: everything but Windows
-            executable_environment.add_library('pthread') # Needed by googletest
-            executable_environment.Append(CXXFLAGS='-fpic') # Use position-independent code
-            executable_environment.Append(CXXFLAGS='-fpie') # Use position-independent code
-            executable_environment.Append(CFLAGS='-fpic') # Use position-independent code
-            executable_environment.Append(CFLAGS='-fpie') # Use position-independent code
-
-            compile_unit_tests = executable_environment.Program(executable_path, test_sources)
-
-    environment.Depends(compile_shared_library, compile_static_library)
-    environment.Depends(compile_unit_tests, compile_static_library)
-
-    if (platform.system() == 'Windows') and _is_debug_build(environment):
-        return (
-            compile_shared_library + build_debug_database +
-            compile_unit_tests + build_test_debug_database
+        compile_unit_tests = executable_environment.build_executable(
+            universal_test_executable_name, sources + test_sources
         )
-    else:
-        return compile_shared_library + compile_unit_tests
+
+    return compile_shared_library + compile_unit_tests
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -815,7 +727,7 @@ def _build_msbuild_project(environment, msbuild_project_path):
     msbuild_project_file = environment.File(msbuild_project_path)
     dotnet_version_tag = dotnet.detect_msbuild_target_framework(msbuild_project_file)
 
-    build_directory_name = environment.get_build_directory_name(dotnet_version_tag)
+    build_directory_name = environment.get_variant_directory_name(dotnet_version_tag)
 
     intermediate_build_directory = os.path.join(
         environment['INTERMEDIATE_DIRECTORY'], build_directory_name
@@ -859,7 +771,7 @@ def _add_variantdir_and_enumerate_cplusplus_sources(environment, directory, sour
     # in parallel.
     intermediate_build_directory = os.path.join(
         environment['INTERMEDIATE_DIRECTORY'],
-        environment.get_build_directory_name()
+        environment.get_variant_directory_name()
     )
     variant_directory = os.path.join(intermediate_build_directory, directory)
 
@@ -892,8 +804,7 @@ def _put_in_intermediate_path(environment, filename):
     @returns The intermediate path for a file with the specified name"""
 
     intermediate_directory = os.path.join(
-        environment['INTERMEDIATE_DIRECTORY'],
-        environment.get_build_directory_name()
+        environment['INTERMEDIATE_DIRECTORY'], environment.get_variant_directory_name()
     )
 
     return os.path.join(intermediate_directory, filename)
@@ -909,7 +820,9 @@ def _put_in_artifact_path(environment, filename):
 
     artifact_directory = os.path.join(
         environment['ARTIFACT_DIRECTORY'],
-        environment.get_build_directory_name()
+        environment.get_variant_directory_name()
     )
 
     return os.path.join(artifact_directory, filename)
+
+# ----------------------------------------------------------------------------------------------- #

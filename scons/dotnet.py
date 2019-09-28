@@ -68,7 +68,7 @@ def setup(environment):
     environment.Append(SCANNERS = msbuild_scanner)
 
     environment.AddMethod(_call_msbuild, "MSBuild")
-    environment.AddMethod(_get_build_directory_name, "get_build_directory_name")
+    environment.AddMethod(_get_variant_directory_name, "get_variant_directory_name")
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -388,57 +388,57 @@ def detect_msbuild_target_framework(node):
     if not (target_framework_version is None):
         # https://docs.microsoft.com/en-us/visualstudio/msbuild/msbuild-target-framework-and-target-platform?view=vs-2017
         if target_framework_version.text == 'v2.0':
-            return 'net20'
+            return 'net2.0'
         elif target_framework_version.text == 'v3.0':
-            return 'net30'
+            return 'net3.0'
         elif target_framework_version.text == 'v3.5':
-            return 'net35'
+            return 'net3.5'
         elif target_framework_version.text == 'v4.0':
-            return 'net40'
+            return 'net4.0'
         elif target_framework_version.text == 'v4.5.2':
-            return 'net45'
+            return 'net4.5'
         elif target_framework_version.text == 'v4.6':
-            return 'net46'
+            return 'net4.6'
         elif target_framework_version.text == 'v4.6.1':
-            return 'net46'
+            return 'net4.6'
         elif target_framework_version.text == 'v4.6.2':
-            return 'net46'
+            return 'net4.6'
         elif target_framework_version.text == 'v4.7':
-            return 'net47'
+            return 'net4.7'
         elif target_framework_version.text == 'v4.7.1':
-            return 'net47'
+            return 'net4.7'
         elif target_framework_version.text == 'v4.7.2': # Probably...
-            return 'net47'
+            return 'net4.7'
 
     target_framework = project_node.find(
         './msbuild:PropertyGroup/msbuild:TargetFramework', xml_namespaces
     )
     if not (target_framework is None):
         if target_framework.text == 'netstandard1.0':
-            return 'netstandard10'
+            return 'netstandard1.0'
         elif target_framework.text == 'netstandard1.1':
-            return 'netstandard11'
+            return 'netstandard1.1'
         elif target_framework.text == 'netstandard1.2':
-            return 'netstandard12'
+            return 'netstandard1.2'
         elif target_framework.text == 'netstandard1.3':
-            return 'netstandard13'
+            return 'netstandard1.3'
         elif target_framework.text == 'netstandard1.4':
-            return 'netstandard14'
+            return 'netstandard1.4'
         elif target_framework.text == 'netstandard1.5':
-            return 'netstandard15'
+            return 'netstandard1.5'
         elif target_framework.text == 'netstandard1.6':
-            return 'netstandard16'
+            return 'netstandard1.6'
         elif target_framework.text == 'netstandard2.0':
-            return 'netstandard20'
+            return 'netstandard2.0'
         elif target_framework.text == 'netstandard3.0': # Probably...
-            return 'netstandard30'
+            return 'netstandard3.0'
 
     # No known target frameworks
     return None
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _get_build_directory_name(environment, dotnet_version_tag = 'net40'):
+def _get_variant_directory_name(environment, dotnet_version_tag = 'net4.0'):
     """Determines the name of the build directory with the current environment settings
 
     @param  environment         Environment to determine the build directory name from
@@ -459,5 +459,4 @@ def _get_build_directory_name(environment, dotnet_version_tag = 'net40'):
         configuration_name
     )
 
-#csccom = "$CSC $CSCFLAGS -out:${TARGET.abspath} $SOURCES"
-#csclibcom = "$CSC -t:library $CSCLIBFLAGS $_CSCLIBPATH $_CSCLIBS -out:${TARGET.abspath} $SOURCES"
+# ----------------------------------------------------------------------------------------------- #

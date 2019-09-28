@@ -22,7 +22,7 @@ def setup(environment):
     environment.AddMethod(_add_library_directory, "add_library_directory")
     environment.AddMethod(_add_library, "add_library")
     environment.AddMethod(_add_preprocessor_constant, "add_preprocessor_constant")
-    environment.AddMethod(_get_build_directory_name, "get_build_directory_name")
+    environment.AddMethod(_get_variant_directory_name, "get_variant_directory_name")
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -91,7 +91,11 @@ def enumerate_sources(source_directory, variant_directory = None):
 # ----------------------------------------------------------------------------------------------- #
 
 def find_or_guess_include_directory(package_path):
-    """Tries to locate the include directory for a package
+    """Tries to locate the include directory for a package. A package is a typical
+    C/C++ library distribution as it could be found in a .tar.gz archive.
+
+    Several known conventions are tried, such as an 'include' folder and a folder
+    named identical to the package.
 
     @param  self          The instance this method should work on
     @param  package_path  Path to the package"""
@@ -114,12 +118,14 @@ def find_or_guess_include_directory(package_path):
 # ------------------------------------------------------------------------------------------- #
 
 def find_or_guess_library_directory(environment, library_builds_path):
-    """Tries to locate the library directory for a package
+    """Tries to locate the library directory for a package. There is no widely
+    used schema for naming these to match specific compilers and platforms,
+    so it looks for the 'build directory' convention used in this script.
 
     @param  environment          Environment used to look up architecture and compiler
     @param  library_builds_path  Path to the directory containing the library builds
                                  Each build is expected to be in a directory matching
-                                 the build directory name (_get_build_directory_name())
+                                 the build directory name (_get_variant_directory_name())
     @remarks
         This can be used to automatically find the directory in which precompiled
         library binaries are stored."""
@@ -348,7 +354,7 @@ def _add_preprocessor_constant(environment, constant_name):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _get_build_directory_name(environment):
+def _get_variant_directory_name(environment):
     """Determines the name of the build directory for the current compiler version
     and output settings (such as platform and whether it's a debug or release build)
 
@@ -448,3 +454,5 @@ def _get_architecture_or_default(environment):
         return 'amd64'
     else:
         return architecture
+
+# ----------------------------------------------------------------------------------------------- #
