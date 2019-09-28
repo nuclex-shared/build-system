@@ -372,6 +372,7 @@ def _set_standard_cplusplus_compiler_flags(environment):
         #environment.Append(CFLAGS=['-flinker-output=pie']) # Position-independent executable
         environment.Append(CFLAGS='-shared-libgcc') # Use shared C/C++ runtime library
         environment.Append(CFLAGS='-fpic') # Use position-independent code
+        environment.Append(CFLAGS='-funsafe-math-optimizations') # Allow float optimizations
 
         environment.Append(CXXFLAGS='-fvisibility=hidden') # Default visibility: don't export
         environment.Append(CXXFLAGS='-fvisibility-inlines-hidden') # Inline code is also hidden
@@ -382,6 +383,7 @@ def _set_standard_cplusplus_compiler_flags(environment):
         #environment.Append(CXXFLAGS=['-flinker-output=pie']) # Position-independent executable
         environment.Append(CXXFLAGS='-shared-libgcc') # Use shared C/C++ runtime library
         environment.Append(CXXFLAGS='-fpic') # Use position-independent code
+        environment.Append(CXXFLAGS='-funsafe-math-optimizations') # Allow float optimizations
         environment.Append(CXXFLAGS='-std=c++14') # Use a widely supported but current C++
 
         if _is_debug_build(environment):
@@ -707,7 +709,7 @@ def _build_cplusplus_unit_tests(
 
     if 'TESTS_DIRECTORY' in environment:
         environment.add_source_directory(environment['TESTS_DIRECTORY'])
-    
+
     return _build_cplusplus_executable(
         environment, universal_executable_name, console = True
     )
