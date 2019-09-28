@@ -672,6 +672,12 @@ def _build_cplusplus_executable(
             pdb_file_absolute_path = environment.File(pdb_file_path).srcnode().abspath
             environment.Append(CXXFLAGS='/Fd"' + pdb_file_absolute_path + '"')
             environment.Append(CFLAGS='/Fd"' + pdb_file_absolute_path + '"')
+
+        if console:
+            environment.Append(LINKFLAGS='/SUBSYSTEM:CONSOLE')
+        else:
+            environment.Append(LINKFLAGS='/SUBSYSTEM:WINDOWS')
+
     else:
         environment.Append(CXXFLAGS='-fpie') # Build position-independent executable
         environment.Append(CFLAGS='-fpie') # Build position-independent executable
@@ -703,7 +709,8 @@ def _build_cplusplus_unit_tests(
                                        (i.e. 'My.Awesome.Stuff')"""
 
     environment.add_package('gtest', [ 'gtest', 'gtest_main' ])
-    environment.add_library('pthread')
+    if not (platform.system() == 'Windows'):
+        environment.add_library('pthread')
 
     environment['INTERMEDIATE_SUFFIX'] = 'tests'
 
