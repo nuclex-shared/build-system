@@ -22,6 +22,7 @@ def setup(environment):
     environment.AddMethod(_add_library_directory, "add_library_directory")
     environment.AddMethod(_add_library, "add_library")
     environment.AddMethod(_add_preprocessor_constant, "add_preprocessor_constant")
+    environment.AddMethod(_get_build_directory_name, "get_build_directory_name")
     environment.AddMethod(_get_variant_directory_name, "get_variant_directory_name")
 
 # ----------------------------------------------------------------------------------------------- #
@@ -378,7 +379,7 @@ def _add_preprocessor_constant(environment, constant_name):
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _get_variant_directory_name(environment):
+def _get_build_directory_name(environment):
     """Determines the name of the build directory for the current compiler version
     and output settings (such as platform and whether it's a debug or release build)
 
@@ -399,18 +400,29 @@ def _get_variant_directory_name(environment):
     if compiler_version is None:
         raise FileNotFoundError("C/C++ compiler could not be found")
 
+    return _make_build_directory_name(
+        environment, compiler_name, compiler_version[0], compiler_version[1]
+    )
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _get_variant_directory_name(environment):
+    """Determines the name of the variant directory for the current compiler version
+    and output settings (such as platform and whether it's a debug or release build)
+    plus the current build suffix.
+
+    @param  environment  Environment for which the variant directory will be determined
+    @returns The name the variant directory should have
+    @remarks
+        The variant directory typically matches the build directory, but may have
+        an extra suffix if more than one code module is compiled (thus, the risk for
+        overlapping build outputs exists)."""
+
     if 'INTERMEDIATE_SUFFIX' in environment:
         suffix = environment['INTERMEDIATE_SUFFIX']
-        return (
-            _make_build_directory_name(
-                environment, compiler_name, compiler_version[0], compiler_version[1]
-            ) + '-' +
-            suffix
-        )
+        return _get_build_directory_name(environment) + '-' + suffix
     else:
-        return _make_build_directory_name(
-            environment, compiler_name, compiler_version[0], compiler_version[1]
-        )
+        return _get_build_directory_name(environment)
 
 # ----------------------------------------------------------------------------------------------- #
 

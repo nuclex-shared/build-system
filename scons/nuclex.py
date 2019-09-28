@@ -263,7 +263,7 @@ def _register_cplusplus_extension_methods(environment):
     environment.AddMethod(_add_cplusplus_package, 'add_package')
     environment.AddMethod(_add_cplusplus_source_directory, 'add_source_directory')
     environment.AddMethod(_build_cplusplus_library, 'build_library')
-    environment.AddMethod(_build_cplusplus_library_with_tests, 'build_library_with_tests')
+    environment.AddMethod(_build_cplusplus_unit_tests, 'build_unit_tests')
     environment.AddMethod(_build_cplusplus_executable, 'build_executable')
     environment.AddMethod(_run_cplusplus_unit_tests, 'run_unit_tests')
 
@@ -554,6 +554,23 @@ def _add_cplusplus_source_directory(environment, source_directory, sources = Non
 
 # ----------------------------------------------------------------------------------------------- #
 
+def _install_artifacts(environment, artifacts):
+    artifact_directory = os.path.join(
+        environment['ARTIFACT_DIRECTORY'],
+        environment.get_build_directory_name()
+    )
+
+    # Library that needs to be linked
+    if artifacts is None:
+        raise FileNotFoundError('Artifact not found')
+    elif isinstance(artifacts, list):
+        #for artifact in artifacts:
+        return environment.Install(artifact_directory, artifacts)
+    else:
+        return environment.Install(artifact_directory, artifacts)
+
+# ----------------------------------------------------------------------------------------------- #
+
 def _build_cplusplus_library(
   environment, universal_library_name, static = False
 ):
@@ -610,9 +627,9 @@ def _build_cplusplus_library(
     # that a PDB file will be generated. Deal with that.
     if (platform.system() == 'Windows') and _is_debug_build(environment):
         build_debug_database = environment.SideEffect(pdb_file_absolute_path, build_library)
-        return build_library + build_debug_database
+        return _install_artifacts(environment, build_library + build_debug_database)
     else:
-        return build_library
+        return _install_artifacts(environment, build_library)
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -668,79 +685,32 @@ def _build_cplusplus_executable(
     build_executable = environment.Program(executable_path, variant_sources)
     if (platform.system() == 'Windows') and _is_debug_build(environment):
         build_debug_database = environment.SideEffect(pdb_file_absolute_path, build_executable)
-        return build_executable + build_debug_database
+        return _install_artifacts(environment, build_executable + build_debug_database)
     else:
-        return build_executable
+        return _install_artifacts(environment, build_executable)
 
 # ----------------------------------------------------------------------------------------------- #
 
-def _build_cplusplus_library_with_tests(
-    environment, universal_library_name, universal_test_executable_name,
-    sources = None, test_sources = None
+def _build_cplusplus_unit_tests(
+    environment, universal_executable_name
 ):
-    """Creates a C/C++ shared library and also builds a unit test executable or it
+    """Creates a C/C++ executable that runs the unit tests contained in itself
 
     @param  environment                Environment controlling the build settings
     @param  universal_executable_name  Name of the library in universal format
-                                       (i.e. 'My.Awesome.Stuff')
-    @param  sources                    Source files to use (None = auto)
-    @param  test_sources               Source files to use for the unit tests (None = auto)
-    @remarks
-        Assumes the default conventions, i.e. all source code is contained in a directory
-        named 'Source' and all headers in a directory named 'Include'.
+                                       (i.e. 'My.Awesome.Stuff')"""
 
-        In addition to the convenience factor, this method also avoids SCons warnings about
-        two environments producing the same intermediate files (or having to compile everything
-        twice) by first building a static library, then producing a shared library from it
-        and producing the unit test executabel from it together with the unit test sources.
+    environment.add_package('gtest', [ 'gtest', 'gtest_main' ])
+    environment.add_library('pthread')
 
-        See get_platform_specific_executable_name() for how the universal_library_name
-        parameter is used to produce the output filename on different platforms."""
+    environment['INTERMEDIATE_SUFFIX'] = 'tests'
 
-    # Recursively search for the source code files or transform the existing file list
-    sources = _add_variantdir_and_enumerate_cplusplus_sources(
-        environment, environment['SOURCE_DIRECTORY'], sources
+    if 'TESTS_DIRECTORY' in environment:
+        environment.add_source_directory(environment['TESTS_DIRECTORY'])
+    
+    return _build_cplusplus_executable(
+        environment, universal_executable_name, console = True
     )
-    test_sources = _add_variantdir_and_enumerate_cplusplus_sources(
-        environment, environment['TESTS_DIRECTORY'], test_sources
-    )
-
-    intermediate_directory = os.path.join(
-        environment['INTERMEDIATE_DIRECTORY'],
-        environment.get_variant_directory_name()
-    )
-
-    base_directory = environment.Dir('.').abspath
-
-    # Build a shared library
-    if True:
-        library_name = cplusplus.get_platform_specific_library_name(universal_library_name)
-        library_path = _put_in_intermediate_path(environment, library_name)
-
-        sharedlib_environment = environment.Clone();
-        sharedlib_environment.add_include_directory(environment['HEADER_DIRECTORY'])
-
-        sharedlib_environment
-        compile_shared_library = sharedlib_environment.build_library(
-            universal_library_name, static = False, sources = sources
-        )
-
-    if True:
-        executable_name = cplusplus.get_platform_specific_executable_name(
-            universal_test_executable_name
-        )
-
-        executable_environment = environment.Clone()
-        executable_environment['INTERMEDIATE_SUFFIX'] = 'tests'
-        executable_environment.add_include_directory(environment['HEADER_DIRECTORY'])
-
-        executable_environment.add_package('gtest', [ 'gtest', 'gtest_main' ])
-
-        compile_unit_tests = executable_environment.build_executable(
-            universal_test_executable_name, sources + test_sources
-        )
-
-    return compile_shared_library + compile_unit_tests
 
 # ----------------------------------------------------------------------------------------------- #
 
