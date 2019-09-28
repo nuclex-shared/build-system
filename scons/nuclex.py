@@ -731,13 +731,20 @@ def _run_cplusplus_unit_tests(environment, universal_test_executable_name):
     test_executable_name = cplusplus.get_platform_specific_executable_name(
         universal_test_executable_name
     )
-    test_executable_path = _put_in_intermediate_path(
+
+    test_executable_path = _put_in_artifact_path(
         environment, test_executable_name
     )
 
-    test_results_path = _put_in_artifact_path(
-        environment, environment['TESTS_RESULT_FILE']
-    )
+    test_results_path = None
+    if 'TESTS_RESULT_FILE' in environment:
+        test_results_path = _put_in_artifact_path(
+            environment, environment['TESTS_RESULT_FILE']
+        )
+    else:
+        test_results_path = _put_in_artifact_path(
+            environment, 'gtest-results.xml'
+        )
 
     return environment.Command(
         source = test_executable_path,
@@ -849,7 +856,7 @@ def _put_in_artifact_path(environment, filename):
 
     artifact_directory = os.path.join(
         environment['ARTIFACT_DIRECTORY'],
-        environment.get_variant_directory_name()
+        environment.get_build_directory_name()
     )
 
     return os.path.join(artifact_directory, filename)
