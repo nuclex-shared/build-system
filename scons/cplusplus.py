@@ -132,16 +132,20 @@ def find_or_guess_library_directory(environment, library_builds_path):
 
     compiler_name = get_compiler_name(environment)
     if compiler_name is None:
-        raise FileNotFound('C/C++ compiler could not be found')
+        raise FileNotFoundError('C/C++ compiler could not be found')
 
     compiler_version = get_compiler_version(environment)
     if compiler_version is None:
-        raise FileNotFound('C/C++ compiler could not be found')
+        raise FileNotFoundError('C/C++ compiler could not be found')
 
     major_compiler_version = int(compiler_version[0])
     minor_compiler_version = int(compiler_version[1])
 
-    while major_compiler_version > 6: # We don't serve compilers earlier than this :-)
+    checked_directories = []
+    not_optimal = False
+
+    # First run, check libraries for earlier minor versions of the compiler
+    while minor_compiler_version >= 0:
 
         # Look for a build matching the specified compiler version
         library_build_name = _make_build_directory_name(
@@ -150,19 +154,39 @@ def find_or_guess_library_directory(environment, library_builds_path):
         )
         candidate = os.path.join(library_builds_path, library_build_name)
 
+        checked_directories.append(candidate)
         if os.path.isdir(candidate):
+            if not_optimal:
+                print(
+                    'Using library build of ' + library_builds_path +
+                    ' of older compiler version: ' + candidate
+                )
             return candidate
 
-        # Also try builds for previous compiler versions
-        if minor_compiler_version > 0:
-            minor_compiler_version -= 1
-        else:
-            major_compiler_version -= 1
+        minor_compiler_version -= 1
+        not_optimal = True
+
+    major_compiler_version -= 1
+
+    # Second run, check latest builds for earlier major versions of the compiler
+    while major_compiler_version > 6: # We don't serve compilers earlier than this :-)
+        # TODO
+
+        major_compiler_version -= 1
 
     # No compiler-specified binaries, give the 'lib' dir a final try
     candidate = os.path.join(library_builds_path, 'lib')
     if os.path.isdir(candidate):
+        print(
+            'Using default library build of ' + library_builds_path +
+            ' of unknown compiler version'
+        )
         return candidate
+
+    print(
+        'Could not find library in ' + library_builds_path +
+        ' - tried directories: ' + str(checked_directories)
+    )
 
     return None
 
@@ -230,7 +254,7 @@ def get_compiler_name(environment):
     elif 'CC' in environment:
         compiler_executable = environment['CC']
     else:
-        raise FileNotFound('No C/C++ compiler found')
+        raise FileNotFoundError('No C/C++ compiler found')
 
     if (compiler_executable == 'cl') or (compiler_executable == 'icc'):
         return 'msvc'
@@ -256,7 +280,7 @@ def get_compiler_version(environment):
     elif 'CC' in environment:
         compiler_executable = environment['CC']
     else:
-        raise FileNotFound('No C/C++ compiler found')
+        raise FileNotFoundError('No C/C++ compiler found')
 
     if (compiler_executable == 'cl') or (compiler_executable == 'icc'):
         if 'MSVC_VERSION' in environment:
@@ -369,11 +393,11 @@ def _get_variant_directory_name(environment):
 
     compiler_name = get_compiler_name(environment)
     if compiler_name is None:
-        raise FileNotFound("C/C++ compiler could not be found")
+        raise FileNotFoundError("C/C++ compiler could not be found")
 
     compiler_version = get_compiler_version(environment)
     if compiler_version is None:
-        raise FileNotFound("C/C++ compiler could not be found")
+        raise FileNotFoundError("C/C++ compiler could not be found")
 
     if 'INTERMEDIATE_SUFFIX' in environment:
         suffix = environment['INTERMEDIATE_SUFFIX']
