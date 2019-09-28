@@ -402,11 +402,15 @@ def _get_variant_directory_name(environment):
     if 'INTERMEDIATE_SUFFIX' in environment:
         suffix = environment['INTERMEDIATE_SUFFIX']
         return (
-            _make_build_directory_name(environment, compiler_name, compiler_version[0]) + '-' +
+            _make_build_directory_name(
+                environment, compiler_name, compiler_version[0], compiler_version[1]
+            ) + '-' +
             suffix
         )
     else:
-        return _make_build_directory_name(environment, compiler_name, compiler_version[0])
+        return _make_build_directory_name(
+            environment, compiler_name, compiler_version[0], compiler_version[1]
+        )
 
 # ----------------------------------------------------------------------------------------------- #
 

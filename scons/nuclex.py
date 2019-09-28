@@ -21,6 +21,10 @@ dotnet = importlib.import_module('dotnet')
 blender = importlib.import_module('blender')
 godot = importlib.import_module('godot')
 
+# Inline stuff
+#execfile('nuclex-cplusplus.py')
+
+
 # Plan:
 #   - if TARGET_ARCH is set, use it. For multi-builds,
 #     this may result in failure, but that's okay
@@ -246,8 +250,8 @@ def _register_generic_extension_methods(environment):
 
     @param  environment  Environment the extension methods will be registered to"""
 
-    environment.AddMethod(_build_scons, "build_scons")
-    environment.AddMethod(_is_debug_build, "is_debug_build")
+    environment.AddMethod(_build_scons, 'build_scons')
+    environment.AddMethod(_is_debug_build, 'is_debug_build')
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -256,11 +260,12 @@ def _register_cplusplus_extension_methods(environment):
 
     @param  environment  Environment the extension methods will be registered to"""
 
-    environment.AddMethod(_add_cplusplus_package, "add_package")
-    environment.AddMethod(_build_cplusplus_library, "build_library")
-    environment.AddMethod(_build_cplusplus_library_with_tests, "build_library_with_tests")
-    environment.AddMethod(_build_cplusplus_executable, "build_executable")
-    environment.AddMethod(_run_cplusplus_unit_tests, "run_unit_tests")
+    environment.AddMethod(_add_cplusplus_package, 'add_package')
+    environment.AddMethod(_add_cplusplus_source_directory, 'add_source_directory')
+    environment.AddMethod(_build_cplusplus_library, 'build_library')
+    environment.AddMethod(_build_cplusplus_library_with_tests, 'build_library_with_tests')
+    environment.AddMethod(_build_cplusplus_executable, 'build_executable')
+    environment.AddMethod(_run_cplusplus_unit_tests, 'run_unit_tests')
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -361,20 +366,23 @@ def _set_standard_cplusplus_compiler_flags(environment):
         environment.Append(CFLAGS='-fvisibility=hidden') # Default visibility: don't export
         environment.Append(CFLAGS='-fvisibility-inlines-hidden') # Inline code is also hidden
         environment.Append(CFLAGS='-Wpedantic') # Enable all ISO C++ deviation warnings
-        environment.Append(CFLAGS='-Wall') # Show all warnings
+        environment.Append(CFLAGS='-Wall') # Show all common warnings
+        environment.Append(CFLAGS='-Wextra') # Show extra warnings
         environment.Append(CFLAGS='-Wno-unknown-pragmas') # Don't warn about #pragma region
         #environment.Append(CFLAGS=['-flinker-output=pie']) # Position-independent executable
         environment.Append(CFLAGS='-shared-libgcc') # Use shared C/C++ runtime library
+        environment.Append(CFLAGS='-fpic') # Use position-independent code
 
         environment.Append(CXXFLAGS='-fvisibility=hidden') # Default visibility: don't export
         environment.Append(CXXFLAGS='-fvisibility-inlines-hidden') # Inline code is also hidden
         environment.Append(CXXFLAGS='-Wpedantic') # Enable all ISO C++ deviation warnings
-        environment.Append(CXXFLAGS='-Wall') # Show all warnings
+        environment.Append(CXXFLAGS='-Wall') # Show all common warnings
+        environment.Append(CXXFLAGS='-Wextra') # Show extra warnings
         environment.Append(CXXFLAGS='-Wno-unknown-pragmas') # Don't warn about #pragma region
         #environment.Append(CXXFLAGS=['-flinker-output=pie']) # Position-independent executable
         environment.Append(CXXFLAGS='-shared-libgcc') # Use shared C/C++ runtime library
+        environment.Append(CXXFLAGS='-fpic') # Use position-independent code
         environment.Append(CXXFLAGS='-std=c++14') # Use a widely supported but current C++
-
 
         if _is_debug_build(environment):
             #environment.Append(CFLAGS='-Og') # Tailor code for optimal debugging
@@ -500,8 +508,54 @@ def _add_cplusplus_package(environment, universal_package_name, universal_librar
 
 # ----------------------------------------------------------------------------------------------- #
 
+def _add_cplusplus_source_directory(environment, source_directory, sources = None):
+    """Adds a directory containing C/C++ source code files to the build.
+    The directory is recursively scanned and compiled using a variant directory.
+    
+    @param  environment       SCons build environment holding the build settings
+    @param  source_directory  Directory containing the source code files
+    @param  source            Source code files that will be compiled. If 'None',
+                              all C/C++ sources will be recursively search. If
+                              specified, all sources must be in 'source_directory'"""
+
+    variant_sources = None
+    if '_VARIANT_SOURCES' in environment:
+        variant_sources = environment['_VARIANT_SOURCES']
+    else:
+        variant_sources = []
+
+    # Append the build directory. This directory is unique per build setup,
+    # so that debug/release and x86/amd64 builds can life side by side or happen
+    # in parallel.
+    intermediate_build_directory = os.path.join(
+        environment['INTERMEDIATE_DIRECTORY'],
+        environment.get_variant_directory_name()
+    )
+    variant_directory = os.path.join(intermediate_build_directory, source_directory)
+
+    # Set up the variant directory so that object files get stored separately
+    environment.VariantDir(variant_directory, source_directory, duplicate = 0)
+
+    if sources is None:
+
+        # Recursively search for the source code files
+        sources = cplusplus.enumerate_sources(source_directory, intermediate_build_directory)
+        for source in sources:
+            variant_sources.append(source)
+
+    else:
+
+        for file_path in sources:
+            variant_sources.append(
+                os.path.join(intermediate_build_directory, file_path)
+            )
+
+    environment['_VARIANT_SOURCES'] = variant_sources
+
+# ----------------------------------------------------------------------------------------------- #
+
 def _build_cplusplus_library(
-  environment, universal_library_name, static = False, sources = None
+  environment, universal_library_name, static = False
 ):
     """Creates a shared C/C++ library
 
@@ -509,7 +563,6 @@ def _build_cplusplus_library(
     @param  universal_library_name  Name of the library in universal format
                                     (i.e. 'My.Awesome.Stuff')
     @param  static                  Whether to build a static library (default: no)
-    @param  sources                 Source files to use (None = auto)
     @remarks
         Assumes the default conventions, i.e. all source code is contained in a directory
         named 'Source' and all headers in a directory named 'Include'.
@@ -521,12 +574,13 @@ def _build_cplusplus_library(
 
     # Include directories
     # These will automatically be scanned by SCons for changes
-    environment.add_include_directory(environment['HEADER_DIRECTORY'])
+    if 'HEADER_DIRECTORY' in environment:
+        environment.add_include_directory(environment['HEADER_DIRECTORY'])
 
     # Recursively search for the source code files or transform the existing file list
-    sources = _add_variantdir_and_enumerate_cplusplus_sources(
-        environment, environment['SOURCE_DIRECTORY'], sources
-    )
+    if 'SOURCE_DIRECTORY' in environment:
+        environment.add_source_directory(environment['SOURCE_DIRECTORY'])
+
     library_path = _put_in_intermediate_path(
         environment, cplusplus.get_platform_specific_library_name(universal_library_name, static)
     )
@@ -537,17 +591,20 @@ def _build_cplusplus_library(
             pdb_file_absolute_path = environment.File(pdb_file_path).srcnode().abspath
             environment.Append(CXXFLAGS='/Fd"' + pdb_file_absolute_path + '"')
             environment.Append(CFLAGS='/Fd"' + pdb_file_absolute_path + '"')
+
+    # Grab the list of source files from the environment
+    variant_sources = None
+    if '_VARIANT_SOURCES' in environment:
+        variant_sources = environment['_VARIANT_SOURCES']
     else:
-        environment.Append(CXXFLAGS='-fpic') # Use position-independent code
-        environment.Append(CFLAGS='-fpic') # Use position-independent code
+        raise FileNotFoundError('No source files added to compile')
 
     # Build either a static or a shared library
     build_library = None
     if static:
-        print('FUCK YOU' + str(static))
-        build_library = environment.StaticLibrary(library_path, sources)
+        build_library = environment.StaticLibrary(library_path, variant_sources)
     else:
-        build_library = environment.SharedLibrary(library_path, sources)
+        build_library = environment.SharedLibrary(library_path, variant_sources)
 
     # If we're on Windows, a side effect of building a library in debug mode is
     # that a PDB file will be generated. Deal with that.
@@ -560,7 +617,7 @@ def _build_cplusplus_library(
 # ----------------------------------------------------------------------------------------------- #
 
 def _build_cplusplus_executable(
-    environment, universal_executable_name, console = False, sources = None
+    environment, universal_executable_name, console = False
 ):
     """Creates a vanilla C/C++ executable
 
@@ -568,7 +625,6 @@ def _build_cplusplus_executable(
     @param  universal_executable_name  Name of the executable in universal format
                                        (i.e. 'My.Awesome.App')
     @param  console                    Whether to build a shell/command line executable
-    @param  sources                    Source files to use (None = auto)
     @remarks
         Assumes the default conventions, i.e. all source code is contained in a directory
         named 'Source' and all headers in a directory named 'Include'.
@@ -580,35 +636,36 @@ def _build_cplusplus_executable(
 
     # Include directories
     # These will automatically be scanned by SCons for changes
-    environment.add_include_directory(environment['HEADER_DIRECTORY'])
+    if 'HEADER_DIRECTORY' in environment:
+        environment.add_include_directory(environment['HEADER_DIRECTORY'])
 
     # Recursively search for the source code files or transform the existing file list
-    sources = _add_variantdir_and_enumerate_cplusplus_sources(
-        environment, environment['SOURCE_DIRECTORY'], sources
-    )
+    if 'SOURCE_DIRECTORY' in environment:
+        environment.add_source_directory(environment['SOURCE_DIRECTORY'])
+
     executable_path = _put_in_intermediate_path(
         environment, cplusplus.get_platform_specific_executable_name(universal_executable_name)
     )
 
-    # On Windows, there is a distinguishment between console (shell) applications
-    # and GUI applications. Add the appropriate flag if needed.
     if platform.system() == 'Windows':
-        if console:
-            environment.Append(LINKFLAGS='/SUBSYSTEM:CONSOLE')
-
         if _is_debug_build(environment):
             pdb_file_path = os.path.splitext(executable_path)[0] + '.pdb'
             pdb_file_absolute_path = environment.File(pdb_file_path).srcnode().abspath
             environment.Append(CXXFLAGS='/Fd"' + pdb_file_absolute_path + '"')
             environment.Append(CFLAGS='/Fd"' + pdb_file_absolute_path + '"')
     else:
-        environment.Append(CXXFLAGS='-fpic') # Use position-independent code
-        environment.Append(CXXFLAGS='-fpie') # Use position-independent executable
-        environment.Append(CFLAGS='-fpic') # Use position-independent code
-        environment.Append(CFLAGS='-fpie') # Use position-independent executable
+        environment.Append(CXXFLAGS='-fpie') # Build position-independent executable
+        environment.Append(CFLAGS='-fpie') # Build position-independent executable
+
+    # Grab the list of source files from the environment
+    variant_sources = None
+    if '_VARIANT_SOURCES' in environment:
+        variant_sources = environment['_VARIANT_SOURCES']
+    else:
+        raise FileNotFoundError('No source files added to compile')
 
     # Build the executable
-    build_executable = environment.Program(executable_path, sources)
+    build_executable = environment.Program(executable_path, variant_sources)
     if (platform.system() == 'Windows') and _is_debug_build(environment):
         build_debug_database = environment.SideEffect(pdb_file_absolute_path, build_executable)
         return build_executable + build_debug_database
