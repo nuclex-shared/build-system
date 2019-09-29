@@ -513,7 +513,7 @@ def _add_cplusplus_package(environment, universal_package_name, universal_librar
 def _add_cplusplus_source_directory(environment, source_directory, sources = None):
     """Adds a directory containing C/C++ source code files to the build.
     The directory is recursively scanned and compiled using a variant directory.
-    
+
     @param  environment       SCons build environment holding the build settings
     @param  source_directory  Directory containing the source code files
     @param  source            Source code files that will be compiled. If 'None',
@@ -548,6 +548,11 @@ def _add_cplusplus_source_directory(environment, source_directory, sources = Non
     else:
 
         for file_path in sources:
+            if not str(file_path).startswith(source_directory):
+                raise ValueError(
+                    'Explicitly specified source file was not inside source directory'
+                )
+
             variant_sources.append(
                 os.path.join(intermediate_build_directory, file_path)
             )
