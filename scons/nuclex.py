@@ -261,6 +261,7 @@ def _register_cplusplus_extension_methods(environment):
     @param  environment  Environment the extension methods will be registered to"""
 
     environment.AddMethod(_add_cplusplus_package, 'add_package')
+    environment.AddMethod(_add_cplusplus_project, 'add_project')
     environment.AddMethod(_add_cplusplus_source_directory, 'add_source_directory')
     environment.AddMethod(_build_cplusplus_library, 'build_library')
     environment.AddMethod(_build_cplusplus_unit_tests, 'build_unit_tests')
@@ -418,6 +419,7 @@ def _set_standard_cplusplus_linker_flags(environment):
     else:
         environment.Append(LINKFLAGS='-z defs') # Detect unresolved symbols in shared object
         environment.Append(LINKFLAGS='-Bsymbolic') # Prevent replacement on shared object syms
+        environment.Append(LINKFLAGS='-flto') # Compile all code in one unit at link time
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -507,6 +509,56 @@ def _add_cplusplus_package(environment, universal_package_name, universal_librar
             environment.add_library(universal_library_name)
     else:
         environment.add_library(universal_library_names)
+
+# ----------------------------------------------------------------------------------------------- #
+
+def _add_cplusplus_project(environment, project_directory, universal_package_name = None):
+    """Adds another project (its include directory and expected build output if it is
+    using this build script as well)
+
+    @param  environment             Environment to which a package will be added
+    @param  project_directory       Directory holding the project
+    @param  universal_package_name  Name of the package produced by the project. If empty,
+                                    the directory name is assumed to match the package name."""
+
+    #project_directory = os.path.join('..', project_directory_name)
+
+    # Path for the package's headers
+    include_directory = cplusplus.find_or_guess_include_directory(project_directory)
+    if include_directory is None:
+        raise FileNotFoundError(
+            'Could not find include directory for project in ' + project_directory
+        )
+
+    environment.add_include_directory(include_directory)
+
+    # Path for the package's libraries
+    project_artifact_directory = os.path.join(project_directory, environment['ARTIFACT_DIRECTORY'])
+    library_directory = cplusplus.find_or_guess_library_directory(
+        environment, project_artifact_directory
+    )
+    if library_directory is None:
+        raise FileNotFoundError(
+            'Could not find library directory for package in ' + project_directory
+        )
+
+    environment.add_library_directory(library_directory)
+
+    # Library that needs to be linked
+    project_directory_name = os.path.basename(project_directory)
+    if universal_package_name is None:
+        environment.add_library(
+            cplusplus.get_platform_specific_library_name(project_directory_name, True)
+        )
+    elif isinstance(universal_package_name, list):
+        for single_universal_package_name in universal_package_name:
+            environment.add_library(
+                cplusplus.get_platform_specific_library_name(single_universal_package_name, True)
+            )
+    else:
+        environment.add_library(
+            cplusplus.get_platform_specific_library_name(universal_package_name, True)
+        )
 
 # ----------------------------------------------------------------------------------------------- #
 
