@@ -365,7 +365,6 @@ def _set_standard_cplusplus_compiler_flags(environment):
 
     else:
         environment.Append(CFLAGS='-fvisibility=hidden') # Default visibility: don't export
-        environment.Append(CFLAGS='-fvisibility-inlines-hidden') # Inline code is also hidden
         environment.Append(CFLAGS='-Wpedantic') # Enable all ISO C++ deviation warnings
         environment.Append(CFLAGS='-Wall') # Show all common warnings
         environment.Append(CFLAGS='-Wextra') # Show extra warnings
@@ -376,7 +375,6 @@ def _set_standard_cplusplus_compiler_flags(environment):
         environment.Append(CFLAGS='-funsafe-math-optimizations') # Allow float optimizations
 
         environment.Append(CXXFLAGS='-fvisibility=hidden') # Default visibility: don't export
-        environment.Append(CXXFLAGS='-fvisibility-inlines-hidden') # Inline code is also hidden
         environment.Append(CXXFLAGS='-Wpedantic') # Enable all ISO C++ deviation warnings
         environment.Append(CXXFLAGS='-Wall') # Show all common warnings
         environment.Append(CXXFLAGS='-Wextra') # Show extra warnings
@@ -386,6 +384,7 @@ def _set_standard_cplusplus_compiler_flags(environment):
         environment.Append(CXXFLAGS='-fpic') # Use position-independent code
         environment.Append(CXXFLAGS='-funsafe-math-optimizations') # Allow float optimizations
         environment.Append(CXXFLAGS='-std=c++14') # Use a widely supported but current C++
+        environment.Append(CXXFLAGS='-fvisibility-inlines-hidden') # Inline code is also hidden
 
         if _is_debug_build(environment):
             #environment.Append(CFLAGS='-Og') # Tailor code for optimal debugging
