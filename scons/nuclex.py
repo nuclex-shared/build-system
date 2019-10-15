@@ -486,7 +486,7 @@ def _add_cplusplus_package(environment, universal_package_name, universal_librar
     include_directory = cplusplus.find_or_guess_include_directory(package_directory)
     if include_directory is None:
         raise FileNotFoundError(
-        	'Could not find include directory for package in ' + package_directory
+            'Could not find include directory for package in ' + package_directory
         )
 
     environment.add_include_directory(include_directory)
@@ -495,7 +495,7 @@ def _add_cplusplus_package(environment, universal_package_name, universal_librar
     library_directory = cplusplus.find_or_guess_library_directory(environment, package_directory)
     if library_directory is None:
         raise FileNotFoundError(
-        	'Could not find library directory for package in ' + package_directory
+            'Could not find library directory for package in ' + package_directory
         )
 
     environment.add_library_directory(library_directory)

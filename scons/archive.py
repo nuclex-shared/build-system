@@ -5,6 +5,7 @@ import shutil
 import sys
 import importlib
 import tarfile
+import requests
 
 """
 Archive utilities code for SCons projects
@@ -50,6 +51,38 @@ def _move_files_in_subdirectory_level(scan_directory, target_directory, depth):
             file_path = os.path.join(scan_directory, file)
             if os.path.isdir(file_path):
                 _move_files_in_subdirectory_level(file_path, target_directory, depth - 1)
+
+# ----------------------------------------------------------------------------------------------- #
+
+def download_url_in_urlfile(target, source, env):
+    """Downloads from an url contained in an url list file. The first working download
+    will be saved into the target filename
+
+    @param  target  Expected to contain only one file, the target file
+    @param  source  Expected to contain only one file, the url list file
+    @param  env     SCons build environment"""
+
+    urls = list(filter(len, source[0].get_text_contents().split('\n')))
+    for url in urls:
+        # If this is a page (most lkely, an error page), it's not what we're looking for
+        #request = requests.head(url, allow_redirects = True)
+
+        request = requests.get(url, allow_redirects = True)
+        content_type = request.headers.get('content-type')
+        if 'text' in content_type.lower():
+            continue
+        if 'html' in content_type.lower():
+            continue
+
+        target_file = open(str(target[0]), 'wb')
+        target_file.write(request.content)
+        target_file.close()
+
+        return
+
+    raise FileNotFoundError(
+        'Could not download file ' + str(target[0])
+    )
 
 # ----------------------------------------------------------------------------------------------- #
 
