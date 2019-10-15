@@ -5,7 +5,7 @@ import shutil
 import sys
 import importlib
 import tarfile
-import requests
+#import requests
 
 """
 Archive utilities code for SCons projects
@@ -67,16 +67,19 @@ def download_url_in_urlfile(target, source, env):
         # If this is a page (most lkely, an error page), it's not what we're looking for
         #request = requests.head(url, allow_redirects = True)
 
-        request = requests.get(url, allow_redirects = True)
-        content_type = request.headers.get('content-type')
-        if 'text' in content_type.lower():
-            continue
-        if 'html' in content_type.lower():
-            continue
+        #request = requests.get(url, allow_redirects = True)
+        #content_type = request.headers.get('content-type')
+        #if 'text' in content_type.lower():
+        #    continue
+        #if 'html' in content_type.lower():
+        #    continue
 
-        target_file = open(str(target[0]), 'wb')
-        target_file.write(request.content)
-        target_file.close()
+        #target_file = open(str(target[0]), 'wb')
+        #target_file.write(request.content)
+        #target_file.close()
+        raise FileNotFoundError(
+            'You thought Python could download files? Lol. ' + str(target[0])
+        )
 
         return
 
