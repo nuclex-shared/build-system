@@ -15,8 +15,9 @@ and applying unified diffs as patches
 """
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'techtonik'))
-print(os.path.join(os.path.realpath(__file__), 'techtonik'))
+#print(os.path.join(os.path.realpath(__file__), 'techtonik'))
 patch = importlib.import_module('patch')
+wget = importlib.import_module('wget')
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -64,6 +65,10 @@ def download_url_in_urlfile(target, source, env):
 
     urls = list(filter(len, source[0].get_text_contents().split('\n')))
     for url in urls:
+        wget.download(url, out = str(target[0]), bar = None)
+        if os.path.isfile(str(target[0])):
+            return
+
         # If this is a page (most lkely, an error page), it's not what we're looking for
         #request = requests.head(url, allow_redirects = True)
 
@@ -77,11 +82,6 @@ def download_url_in_urlfile(target, source, env):
         #target_file = open(str(target[0]), 'wb')
         #target_file.write(request.content)
         #target_file.close()
-        raise FileNotFoundError(
-            'You thought Python could download files? Lol. ' + str(target[0])
-        )
-
-        return
 
     raise FileNotFoundError(
         'Could not download file ' + str(target[0])
