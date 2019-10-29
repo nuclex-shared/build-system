@@ -133,3 +133,20 @@ def apply_patch(patchfile_path, target_directory = None):
         patchset.apply(root = target_directory)
 
 # ----------------------------------------------------------------------------------------------- #
+
+def split_lines(text_file_contents):
+    """Splits the contents of a text file into individual lines. This will work
+    on both Windows CR-LF line endings and rest-of-the-world LF line endings.
+    It is necessary because Python assumes the format of the platform it's running
+    on, which, however, will not work if you share working copies between Windows
+    and Linux.
+
+    @param  text_file_contents  Text file contents that will be split
+    @returns An array with the indiviual lines from the text file"""
+
+    return list(
+        filter(
+            len,
+            text_file_contents.replace('\r', '').split('\n')
+        )
+    )
