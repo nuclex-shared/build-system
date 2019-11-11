@@ -63,6 +63,10 @@ def create_cplusplus_environment():
         REFERENCES_DIRECTORY = 'References'
     )
 
+    # Pass the 'TERM' variable through to allow colored output on Linux terminals
+    if platform.system() == 'Linux':
+        environment['ENV']['TERM'] = os.environ['TERM']
+
     # Extension methods from the C/C++ module
     cplusplus.setup(environment)
 
@@ -766,7 +770,7 @@ def _build_cplusplus_unit_tests(
     @param  universal_executable_name  Name of the library in universal format
                                        (i.e. 'My.Awesome.Stuff')"""
 
-    environment.add_package('gtest', [ 'gtest', 'gtest_main' ])
+    environment.add_project('../ThirdParty/gtest', [ 'gtest', 'gtest_main' ])
     if not (platform.system() == 'Windows'):
         environment.add_library('pthread')
 
