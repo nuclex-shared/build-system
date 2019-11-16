@@ -65,7 +65,7 @@ def create_cplusplus_environment():
 
     # Pass the 'TERM' variable through to allow colored output on Linux terminals
     if platform.system() == 'Linux':
-        if 'TERM' in environment:
+        if 'TERM' in os.environ:
             environment['ENV']['TERM'] = os.environ['TERM']
 
     # Extension methods from the C/C++ module
