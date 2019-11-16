@@ -65,7 +65,8 @@ def create_cplusplus_environment():
 
     # Pass the 'TERM' variable through to allow colored output on Linux terminals
     if platform.system() == 'Linux':
-        environment['ENV']['TERM'] = os.environ['TERM']
+        if 'TERM' in environment:
+            environment['ENV']['TERM'] = os.environ['TERM']
 
     # Extension methods from the C/C++ module
     cplusplus.setup(environment)
@@ -377,6 +378,8 @@ def _set_standard_cplusplus_compiler_flags(environment):
         environment.Append(CFLAGS='-shared-libgcc') # Use shared C/C++ runtime library
         environment.Append(CFLAGS='-fpic') # Use position-independent code
         environment.Append(CFLAGS='-funsafe-math-optimizations') # Allow float optimizations
+        #environment.Append(CFLAGS='-ffunction-sections')
+        #environment.Append(CFLAGS='-fdata-sections')
 
         environment.Append(CXXFLAGS='-fvisibility=hidden') # Default visibility: don't export
         environment.Append(CXXFLAGS='-Wpedantic') # Enable all ISO C++ deviation warnings
@@ -387,6 +390,8 @@ def _set_standard_cplusplus_compiler_flags(environment):
         environment.Append(CXXFLAGS='-shared-libgcc') # Use shared C/C++ runtime library
         environment.Append(CXXFLAGS='-fpic') # Use position-independent code
         environment.Append(CXXFLAGS='-funsafe-math-optimizations') # Allow float optimizations
+        #environment.Append(CXXFLAGS='-ffunction-sections')
+        #environment.Append(CXXFLAGS='-fdata-sections')
         environment.Append(CXXFLAGS='-std=c++14') # Use a widely supported but current C++
         environment.Append(CXXFLAGS='-fvisibility-inlines-hidden') # Inline code is also hidden
 
@@ -423,6 +428,7 @@ def _set_standard_cplusplus_linker_flags(environment):
         environment.Append(LINKFLAGS='-z defs') # Detect unresolved symbols in shared object
         environment.Append(LINKFLAGS='-Bsymbolic') # Prevent replacement on shared object syms
         environment.Append(LINKFLAGS='-flto') # Compile all code in one unit at link time
+        #environment.Append(LINKFLAGS='--gc-sections') # Remove unused code and data sections
 
 # ----------------------------------------------------------------------------------------------- #
 
