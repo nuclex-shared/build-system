@@ -323,6 +323,9 @@ def _set_standard_cplusplus_compiler_flags(environment):
 
     @param  environment  Environment in which the C++ compiler flags wlll be set."""
 
+    if not _is_debug_build(environment):
+        environment.Append(CPPDEFINES=['NDEBUG'])
+
     if platform.system() == 'Windows':
         environment.Append(CFLAGS='/GF') # String pooling in debug and release
         #environment.Append(CFLAGS='/Gv') # Vectorcall for speed
