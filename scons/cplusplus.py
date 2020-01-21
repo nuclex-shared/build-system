@@ -18,10 +18,13 @@ def setup(environment):
 
     @param  environment  Environment the extension methods will be registered to"""
 
+    # Build setup
     environment.AddMethod(_add_include_directory, "add_include_directory")
     environment.AddMethod(_add_library_directory, "add_library_directory")
     environment.AddMethod(_add_library, "add_library")
     environment.AddMethod(_add_preprocessor_constant, "add_preprocessor_constant")
+
+    # Information gathering
     environment.AddMethod(_get_build_directory_name, "get_build_directory_name")
     environment.AddMethod(_get_variant_directory_name, "get_variant_directory_name")
 
@@ -45,10 +48,12 @@ def enumerate_headers(header_directory, variant_directory = None):
 
     headers = []
 
-    # Form a list of all files in the input directories recursively.
+    # Form a list of all files in the specified directory recursively.
     for root, directory_names, file_names in os.walk(header_directory):
         for file_name in file_names:
             file_title, file_extension = os.path.splitext(file_name)
+
+            # We're only interested in files with an extension indicating a header file
             if file_extension and any(file_extension in s for s in source_file_extensions):
                 if variant_directory is None:
                     headers.append(os.path.join(root, file_name))
@@ -79,6 +84,8 @@ def enumerate_sources(source_directory, variant_directory = None):
     for root, directory_names, file_names in os.walk(source_directory):
         for file_name in file_names:
             file_title, file_extension = os.path.splitext(file_name)
+
+            # We're only interested in files with an extension indicating a C/C++ source file
             if file_extension and any(file_extension in s for s in source_file_extensions):
                 if variant_directory is None:
                     sources.append(os.path.join(root, file_name))
@@ -99,14 +106,20 @@ def find_or_guess_include_directory(package_path):
     @param  self          The instance this method should work on
     @param  package_path  Path to the package"""
 
+    # Try our own standard with an uppercase directory first
+    # If this script runs on Windows, it'll match any case, but that's fine.
     candidate = os.path.join(package_path, 'Include')
     if os.path.isdir(candidate):
         return candidate
 
+    # Try a standard also used by many libraries, a lowercase directory
     candidate = os.path.join(package_path, 'include')
     if os.path.isdir(candidate):
         return candidate
 
+    # If that also didn't work, try the package name. Some libraries use their own
+    # name as the header directory so the include path can be set to their base directory
+    # and header included by prefixing them with the library name.
     package_name = os.path.basename(os.path.normpath(package_path))
     candidate = os.path.join(package_path, package_name)
     if os.path.isdir(candidate):
@@ -143,6 +156,16 @@ def find_or_guess_library_directory(environment, library_builds_path):
     checked_directories = []
     not_optimal = False
 
+    # TODO: Change library search algorithm
+    #
+    # 1. Enumerate all directories matching the 'platform'-'compiler'?.?-'arch'-*
+    # 2. Require same platform and arch
+    # 3. Prefer: same compiler, then older compiler, then newer compiler
+    # 4. Prefer: same build configuration, then release
+    # 5. Try standard library directories
+    #
+    # ?return libraries in directory?
+
     # First run, check libraries for earlier minor versions of the compiler
     while minor_compiler_version >= 0:
 
@@ -169,7 +192,7 @@ def find_or_guess_library_directory(environment, library_builds_path):
 
     # Second run, check latest builds for earlier major versions of the compiler
     while major_compiler_version > 6: # We don't serve compilers earlier than this :-)
-        # TODO
+        # TODO: Look for libraries compiled with older major compiler version
 
         major_compiler_version -= 1
 
@@ -205,19 +228,21 @@ def get_platform_specific_library_name(universal_library_name, static = False):
     if platform.system() == 'Windows':
 
         if static:
-            return universal_library_name + ".lib"
+            return universal_library_name + '.lib'
         else:
-            return universal_library_name + ".dll"
+            return universal_library_name + '.dll'
 
     else:
 
-        # Because Linux tools automatically add 'lib' and '.a'/'.so'
-        return universal_library_name.replace('.', '')
+        # Linux tools automatically add 'lib' and '.a'/'.so'
+        #return universal_library_name.replace('.', '')
 
-        #if static:
-        #    return 'lib' + universal_library_name.replace('.', '') + '.a'
-        #else:
-        #    return 'lib' + universal_library_name.replace('.', '') + '.so'
+        # ...but we want to have the actual filename so we can copy shared libraries
+        # into the artifact directory of builds that have them as a dependency!
+        if static:
+            return 'lib' + universal_library_name.replace('.', '') + '.a'
+        else:
+            return 'lib' + universal_library_name.replace('.', '') + '.so'
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -232,7 +257,7 @@ def get_platform_specific_executable_name(universal_executable_name):
       this might get turned into My.Awesome.Program.exe or MyAwesomeProgram."""
 
     if platform.system() == 'Windows':
-        return universal_executable_name + ".exe"
+        return universal_executable_name + '.exe'
     else:
         return universal_executable_name.replace('.', '')
 
@@ -272,8 +297,13 @@ def get_compiler_version(environment):
     @param  environment  Environment from which the C/C++ compiler executable will be looked up
     @returns The compiler version number, as an array of [Major, Minor, Revision]"""
 
+    # If we already checked which compiler the user is running, just return the cached version
+    if 'COMPILER_VERSION' in environment:
+        return environment['COMPILER_VERSION']
+
     compiler_executable = None
 
+    # Pick up the compiler executable provided to us by SCons
     if 'CXX' in environment:
         compiler_executable = environment['CXX']
         if compiler_executable == "$CC":
@@ -283,6 +313,7 @@ def get_compiler_version(environment):
     else:
         raise FileNotFoundError('No C/C++ compiler found')
 
+    # If it's the Microsoft compiler, do the acrobatics to figure out its version
     if (compiler_executable == 'cl') or (compiler_executable == 'icc'):
         if 'MSVC_VERSION' in environment:
             compiler_version = environment['MSVC_VERSION']
@@ -298,7 +329,7 @@ def get_compiler_version(environment):
 
         compiler_version = re.search('[0-9][0-9.]*', str(stdout))
 
-    else:
+    else: # Figure out which versio nof GCC or clang is running
         gcc_process = subprocess.Popen(
             [compiler_executable, '--version'], stdout=subprocess.PIPE
         )
@@ -306,13 +337,13 @@ def get_compiler_version(environment):
 
         compiler_version = re.search('[0-9][0-9.]*', str(stdout))
 
-    # If no match is found the compiler didn't proide the expected output
+    # If no match is found the compiler didn't provide the expected output
     # and we have no idea which version it might be
     if compiler_version is None:
         return None
 
-    version = compiler_version.group().split('.')
-    return version
+    environment['COMPILER_VERSION'] = compiler_version.group().split('.')
+    return environment['COMPILER_VERSION']
 
 # ----------------------------------------------------------------------------------------------- #
 

@@ -432,6 +432,7 @@ def _set_standard_cplusplus_linker_flags(environment):
         environment.Append(LINKFLAGS='-Bsymbolic') # Prevent replacement on shared object syms
         environment.Append(LINKFLAGS='-flto') # Compile all code in one unit at link time
         #environment.Append(LINKFLAGS='--gc-sections') # Remove unused code and data sections
+        environment.Append(LINKFLAGS="-Wl,-rpath='$${ORIGIN}'") # Search libraries in current dir
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -507,9 +508,14 @@ def _add_cplusplus_package(environment, universal_package_name, universal_librar
     # Path for the package's libraries
     library_directory = cplusplus.find_or_guess_library_directory(environment, package_directory)
     if library_directory is None:
-        raise FileNotFoundError(
-            'Could not find library directory for package in ' + package_directory
+        print('Retrying library with project layout instead of package layout...')
+        library_directory = cplusplus.find_or_guess_library_directory(
+            environment, os.path.join(package_directory, 'bin')
         )
+        if library_directory is None:
+            raise FileNotFoundError(
+                'Could not find library directory for package in ' + package_directory
+            )
 
     environment.add_library_directory(library_directory)
 
