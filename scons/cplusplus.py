@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
 import os
-import shutil
 import platform
 import subprocess
 import re
-import types
+import fnmatch
 
 """
 Helpers for building C/C++ projects with SCons
@@ -138,6 +137,7 @@ def find_or_guess_library_directory(environment, library_builds_path):
     @param  library_builds_path  Path to the directory containing the library builds
                                  Each build is expected to be in a directory matching
                                  the build directory name (_get_variant_directory_name())
+    @returns The library directory or None if it couldn't be found
     @remarks
         This can be used to automatically find the directory in which precompiled
         library binaries are stored."""
@@ -152,6 +152,36 @@ def find_or_guess_library_directory(environment, library_builds_path):
 
     major_compiler_version = int(compiler_version[0])
     minor_compiler_version = int(compiler_version[1])
+
+    # Check the library directory for the exact compiler we're using first,
+    # this should be a hit for all but the sporadic precompiled library.
+    if True:
+        matching_directory_name = _make_build_directory_name(
+            environment, compiler_name, major_compiler_version, minor_compiler_version
+        )
+        matching_directory_path = os.path.join(library_builds_path, matching_directory_name)
+        if os.path.isdir(matching_directory_path):
+            return matching_directory_path
+
+    # Build a regex by which compatible library build directories can be found
+    # Example: '^(linux)-(clang|gcc)(\d+|\d+\.\d+)-(amd64)($|-(debug|release)$)'
+    compatible_library_regex = _build_library_name_regex(environment)
+
+    #print('Regex: ' + compatible_library_regex)
+    #print('Checking ' + library_builds_path)
+
+    candidates = []
+    for fileOrDir in os.listdir(library_builds_path):
+        parts = re.match(compatible_library_regex, fileOrDir)
+        print(os.path.join(library_builds_path, fileOrDir))
+        if parts:
+            if os.path.isdir(os.path.join(library_builds_path, fileOrDir)):
+                candidates.append(fileOrDir)
+
+                version = parts[3]
+                buildtype = parts[5]
+                print('Candidate: ' + fileOrDir + ' | ' + version + ' | ' + buildtype)
+        
 
     checked_directories = []
     not_optimal = False
@@ -499,21 +529,19 @@ def _make_build_directory_name(
     else:
         build_configuration = 'release'
 
+    # The compiler has its version number appended to it. We can't predict
+    # which compiler versions are interoperable, especially with LTO!
+    compiler = compiler_name + str(compiler_major_version)
+    if not (compiler_minor_version is None):
+        compiler = compiler + '.' + str(compiler_minor_version)
+
     # Form the complete build directory name
-    if compiler_minor_version is None:
-        return (
-            platform_name + '-' +
-            compiler_name + compiler_major_version + '-' +
-            architecture + '-' +
-            build_configuration
-        )
-    else:
-        return (
-            platform_name + '-' +
-            compiler_name + compiler_major_version + '.' + compiler_minor_version + '-' +
-            architecture + '-' +
-            build_configuration
-        )
+    return (
+        platform_name + '-' +
+        compiler + '-' +
+        architecture + '-' +
+        build_configuration
+    )
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -530,4 +558,60 @@ def _get_architecture_or_default(environment):
     else:
         return architecture
 
+# ------------------------------------------------------------------------------------------- #
+
+def _build_library_name_regex(environment):
+    """Builds a regular expression that matches library directory names.
+    
+    @param  environment  SCons build environment provided additional information
+    @remarks
+      This regular expression can be used to extract compiler and version information
+      from a library build directory name."""
+
+    # Figure out if this is a debug build
+    is_debug_build = False
+    if 'DEBUG' in environment:
+        is_debug_build = environment['DEBUG']
+
+    # Match start of string. No other characters may be before the library name.
+    libraryRegex = '^'
+
+    # Require the same platform as the one we're currently building on
+    if platform.system() == 'Windows':
+        libraryRegex += '(windows)-('
+    else:
+        libraryRegex += '(linux)-('
+    
+    # Require a compatible compiler, but accept any version of that compiler
+    libraryRegex += ('|').join(_get_compatible_compiler_tags(environment))
+    libraryRegex += ')(\d+|\d+\.\d+)-('
+
+    # The architecture must match exactly
+    libraryRegex += _get_architecture_or_default(environment)
+    libraryRegex += ')-'
+
+    # Debug builds can link both debug and release libraries (this is so third-party
+    # libraries for which no debug build is available can be used)
+    if is_debug_build:
+        libraryRegex += '($|-(debug|release)$)'
+    else: # Release builds can only link release libraries
+        libraryRegex += '($|(release)$)'
+
+    return libraryRegex
+
 # ----------------------------------------------------------------------------------------------- #
+
+def _get_compatible_compiler_tags(environment):
+    """Builds a list of compiler tags whose object file and library formats can
+    be mixed with the currently used compiler
+
+    @param  environment  Build environment providing additional information
+    @returns A list of compiler tags that 
+    @remarks
+      This is used when linking libraries. On Linux, for example, libraries built by
+      clang and GCC can be mixed so long as LTO is disabled. """
+
+    if platform.system() == 'Windows':
+        return [ 'msvc']
+    else:
+        return [ 'gcc', 'clang' ]
