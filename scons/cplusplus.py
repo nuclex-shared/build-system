@@ -102,7 +102,6 @@ def find_or_guess_include_directory(package_path):
     Several known conventions are tried, such as an 'include' folder and a folder
     named identical to the package.
 
-    @param  self          The instance this method should work on
     @param  package_path  Path to the package"""
 
     # Try our own standard with an uppercase directory first
@@ -172,7 +171,7 @@ def find_or_guess_library_directory(environment, library_builds_path):
     compatible_library_regex = _build_library_name_regex(environment)
 
     closest_major_difference = None
-    closest_minor_version  = None # Note: could reasonably go for highest minor version here
+    closest_minor_version = None
     closest_build_type = None
     closest_directory = None
 
@@ -202,7 +201,7 @@ def find_or_guess_library_directory(environment, library_builds_path):
                        (major_difference < closest_major_difference) or
                        (
                            (major_difference == closest_major_difference) and
-                           (minor_version >= closest_minor_version)
+                           (minor_version > closest_minor_version)
                        )
                     )
 
