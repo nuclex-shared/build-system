@@ -142,6 +142,11 @@ def find_or_guess_library_directory(environment, library_builds_path):
         This can be used to automatically find the directory in which precompiled
         library binaries are stored."""
 
+    # Determine whether this is a debug builkd
+    is_debug_build = False
+    if 'DEBUG' in environment:
+        is_debug_build = environment['DEBUG']
+
     compiler_name = get_compiler_name(environment)
     if compiler_name is None:
         raise FileNotFoundError('C/C++ compiler could not be found')
@@ -155,91 +160,96 @@ def find_or_guess_library_directory(environment, library_builds_path):
 
     # Check the library directory for the exact compiler we're using first,
     # this should be a hit for all but the sporadic precompiled library.
-    if True:
-        matching_directory_name = _make_build_directory_name(
-            environment, compiler_name, major_compiler_version, minor_compiler_version
-        )
-        matching_directory_path = os.path.join(library_builds_path, matching_directory_name)
-        if os.path.isdir(matching_directory_path):
-            return matching_directory_path
+    matching_directory_name = _make_build_directory_name(
+        environment, compiler_name, major_compiler_version, minor_compiler_version
+    )
+    matching_directory_path = os.path.join(library_builds_path, matching_directory_name)
+    if os.path.isdir(matching_directory_path):
+        return matching_directory_path
 
     # Build a regex by which compatible library build directories can be found
     # Example: '^(linux)-(clang|gcc)(\d+|\d+\.\d+)-(amd64)($|-(debug|release)$)'
     compatible_library_regex = _build_library_name_regex(environment)
 
-    #print('Regex: ' + compatible_library_regex)
-    #print('Checking ' + library_builds_path)
+    closest_major_difference = None
+    closest_minor_version  = None # Note: could reasonably go for highest minor version here
+    closest_build_type = None
+    closest_directory = None
 
-    candidates = []
+    # Now check all directories in the library directory and look for the best match
+    # (primary concern is closest compiler version, secondary concern is build type match)
     for fileOrDir in os.listdir(library_builds_path):
         parts = re.match(compatible_library_regex, fileOrDir)
-        print(os.path.join(library_builds_path, fileOrDir))
         if parts:
             if os.path.isdir(os.path.join(library_builds_path, fileOrDir)):
-                candidates.append(fileOrDir)
+                version = parts[3].split('.')
+                major_version = int(version[0])
+                minor_version = int(0) if (len(version) == 1) else int(version[1])
+                build_type = 'release' if (parts[6] is None) else str(parts[6])
+                major_difference = abs(major_version - major_compiler_version)
 
-                version = parts[3]
-                buildtype = parts[5]
-                print('Candidate: ' + fileOrDir + ' | ' + version + ' | ' + buildtype)
-        
+                # If this is the first directory we check, take it blindly, otherwise check
+                # if it's a closer match for the current compiler than we found so far.
+                # Note that this all checks for "closer or equal" - in case of an equal
+                # version, we'll then start comparing the build type (debug/release).
+                if closest_major_difference is None:
+                    is_closer_version = True
+                else:
 
-    checked_directories = []
-    not_optimal = False
+                    # Check if this version is closer to the closest version we have found
+                    # up until now. If so, we'll take it as the new closest version
+                    is_closer_version = (
+                       (major_difference < closest_major_difference) or
+                       (
+                           (major_difference == closest_major_difference) and
+                           (minor_version >= closest_minor_version)
+                       )
+                    )
 
-    # TODO: Change library search algorithm
-    #
-    # 1. Enumerate all directories matching the 'platform'-'compiler'?.?-'arch'-*
-    # 2. Require same platform and arch
-    # 3. Prefer: same compiler, then older compiler, then newer compiler
-    # 4. Prefer: same build configuration, then release
-    # 5. Try standard library directories
-    #
-    # ?return libraries in directory?
+                    # Another path to a closer version if finding an equal version where
+                    # the build type (debug/release) is a better fit
+                    is_equal_version = (
+                        (major_difference == closest_major_difference) and
+                        (minor_version == closest_minor_version)
+                    )
+                    if is_equal_version:
+                        is_closer_version = (
+                            (is_debug_build and (build_type == 'debug')) or
+                            (not is_debug_build) and (build_type == 'release')
+                        )
 
-    # First run, check libraries for earlier minor versions of the compiler
-    while minor_compiler_version >= 0:
+                # If this directory promises to hold a better matching version of
+                # the library, accept it as the new best version
+                if is_closer_version:
+                    closest_major_difference = major_difference
+                    closest_minor_version  = minor_version
+                    closest_build_type = build_type
+                    closest_directory = fileOrDir
 
-        # Look for a build matching the specified compiler version
-        library_build_name = _make_build_directory_name(
-            environment, compiler_name,
-            str(major_compiler_version) + '.' + str(minor_compiler_version)
+    # If a close match was found, display a warning and use it
+    if not (closest_directory is None):
+        print(
+            '\033[93mWarning: no fitting binary for library "' + library_builds_path + '" ' +
+            '(needed "' + matching_directory_name + '"), falling back to closest ' +
+            'match, which is "' + closest_directory + '"\033[0m'
         )
-        candidate = os.path.join(library_builds_path, library_build_name)
-
-        checked_directories.append(candidate)
-        if os.path.isdir(candidate):
-            if not_optimal:
-                print(
-                    'Using library build of ' + library_builds_path +
-                    ' of older compiler version: ' + candidate
-                )
-            return candidate
-
-        minor_compiler_version -= 1
-        not_optimal = True
-
-    major_compiler_version -= 1
-
-    # Second run, check latest builds for earlier major versions of the compiler
-    while major_compiler_version > 6: # We don't serve compilers earlier than this :-)
-        # TODO: Look for libraries compiled with older major compiler version
-
-        major_compiler_version -= 1
-
+        return closest_directory
+                
     # No compiler-specified binaries, give the 'lib' dir a final try
     candidate = os.path.join(library_builds_path, 'lib')
     if os.path.isdir(candidate):
         print(
-            'Using default library build of ' + library_builds_path +
-            ' of unknown compiler version'
+            '\033[93mWarning: no fitting binary for library "' + library_builds_path + '" ' +
+            '(needed "' + matching_directory_name + '"), falling back to standard ' +
+            '"lib" dir of unknown compiler and architecture.\033[0m'
         )
         return candidate
 
+    # We failed.
     print(
-        'Could not find library in ' + library_builds_path +
-        ' - tried directories: ' + str(checked_directories)
+        '\033[1;31mError: no fitting binary for library "' + library_builds_path + '" ' +
+        '(needed "' + matching_directory_name + '") found. Giving up.\033[0m'
     )
-
     return None
 
 # ----------------------------------------------------------------------------------------------- #
@@ -337,7 +347,7 @@ def get_compiler_version(environment):
     if 'CXX' in environment:
         compiler_executable = environment['CXX']
         if compiler_executable == "$CC":
-	        compiler_executable = environment['CC']
+	          compiler_executable = environment['CC']
     elif 'CC' in environment:
         compiler_executable = environment['CC']
     else:
@@ -568,6 +578,10 @@ def _build_library_name_regex(environment):
       This regular expression can be used to extract compiler and version information
       from a library build directory name."""
 
+    # If we already built the regex, reuse it
+    if 'COMPATIBLE_LIBRARY_NAME_REGEX' in environment:
+        return environment['COMPATIBLE_LIBRARY_NAME_REGEX']
+
     # Figure out if this is a debug build
     is_debug_build = False
     if 'DEBUG' in environment:
@@ -588,15 +602,16 @@ def _build_library_name_regex(environment):
 
     # The architecture must match exactly
     libraryRegex += _get_architecture_or_default(environment)
-    libraryRegex += ')-'
+    libraryRegex += ')'
 
     # Debug builds can link both debug and release libraries (this is so third-party
     # libraries for which no debug build is available can be used)
     if is_debug_build:
         libraryRegex += '($|-(debug|release)$)'
     else: # Release builds can only link release libraries
-        libraryRegex += '($|(release)$)'
+        libraryRegex += '($|-(release)$)'
 
+    environment['COMPATIBLE_LIBRARY_NAME_REGEX'] = libraryRegex
     return libraryRegex
 
 # ----------------------------------------------------------------------------------------------- #
@@ -612,6 +627,6 @@ def _get_compatible_compiler_tags(environment):
       clang and GCC can be mixed so long as LTO is disabled. """
 
     if platform.system() == 'Windows':
-        return [ 'msvc']
+        return [ 'msvc', 'icc' ]
     else:
         return [ 'gcc', 'clang' ]
