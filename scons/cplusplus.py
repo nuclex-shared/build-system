@@ -4,7 +4,6 @@ import os
 import platform
 import subprocess
 import re
-import fnmatch
 
 """
 Helpers for building C/C++ projects with SCons
@@ -232,8 +231,8 @@ def find_or_guess_library_directory(environment, library_builds_path):
             '(needed "' + matching_directory_name + '"), falling back to closest ' +
             'match, which is "' + closest_directory + '"\033[0m'
         )
-        return closest_directory
-                
+        return os.path.join(library_builds_path, closest_directory)
+
     # No compiler-specified binaries, give the 'lib' dir a final try
     candidate = os.path.join(library_builds_path, 'lib')
     if os.path.isdir(candidate):
@@ -260,9 +259,9 @@ def get_platform_specific_library_name(universal_library_name, static = False):
     @param  static                  Whether the name is for a static library
     @returns The platform-specific library name
     @remarks
-      A universal library name is just the name of the library without extension,
-      using dots to separate words - for example My.Awesome.Stuff. Depending on the platform,
-      this might get turned into My.Awesome.Stuff.dll or libMyAwesomeStuff.so"""
+        A universal library name is just the name of the library without extension,
+        using dots to separate words - for example My.Awesome.Stuff. Depending on the platform,
+        this might get turned into My.Awesome.Stuff.dll or libMyAwesomeStuff.so"""
 
     if platform.system() == 'Windows':
 
@@ -291,9 +290,9 @@ def get_platform_specific_executable_name(universal_executable_name):
     @param  universal_executable_name  Universal name of the executable that will be converted
     @returns The platform-specific executable name
     @remarks
-      A universal executable name is just the name of the executable without extension,
-      using dots to separate words - for example My.Awesome.Program. Depending on the platform,
-      this might get turned into My.Awesome.Program.exe or MyAwesomeProgram."""
+        A universal executable name is just the name of the executable without extension,
+        using dots to separate words - for example My.Awesome.Program. Depending on the platform,
+        this might get turned into My.Awesome.Program.exe or MyAwesomeProgram."""
 
     if platform.system() == 'Windows':
         return universal_executable_name + '.exe'
@@ -574,8 +573,8 @@ def _build_library_name_regex(environment):
     
     @param  environment  SCons build environment provided additional information
     @remarks
-      This regular expression can be used to extract compiler and version information
-      from a library build directory name."""
+        This regular expression can be used to extract compiler and version information
+        from a library build directory name."""
 
     # If we already built the regex, reuse it
     if 'COMPATIBLE_LIBRARY_NAME_REGEX' in environment:
@@ -622,8 +621,8 @@ def _get_compatible_compiler_tags(environment):
     @param  environment  Build environment providing additional information
     @returns A list of compiler tags that 
     @remarks
-      This is used when linking libraries. On Linux, for example, libraries built by
-      clang and GCC can be mixed so long as LTO is disabled. """
+        This is used when linking libraries. On Linux, for example, libraries built by
+        clang and GCC can be mixed so long as LTO is disabled. """
 
     if platform.system() == 'Windows':
         return [ 'msvc', 'icc' ]
