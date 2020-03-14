@@ -32,7 +32,9 @@ def enumerate_headers(header_directory, variant_directory = None):
     """Forms a list of all C/C++ header files in an include directory
 
     @param  header_directory     Directory containing the headers
-    @param  variant_directory    Variant directory to which source paths will be rewritten"""
+    @param  variant_directory    Variant directory to which source paths will be rewritten
+    @returns The path of all discovered headers in their actual location or remapped to
+             the variant directory if one was specified."""
 
     source_file_extensions = [
         '.h',
@@ -66,7 +68,9 @@ def enumerate_sources(source_directory, variant_directory = None):
     """Forms a list of all C/C++ source code files in a source directory
 
     @param  source_directory     Directory containing the C/C++ source code files
-    @param  variant_directory    Variant directory to which source paths will be rewritten"""
+    @param  variant_directory    Variant directory to which source paths will be rewritten
+    @returns The path of all discovered source files in their actual location or remapped to
+             the variant directory if one was specified."""
 
     source_file_extensions = [
         '.c',
@@ -101,7 +105,8 @@ def find_or_guess_include_directory(package_path):
     Several known conventions are tried, such as an 'include' folder and a folder
     named identical to the package.
 
-    @param  package_path  Path to the package"""
+    @param  package_path  Path to the package
+    @returns The detected include directory or None if it couldn't be located"""
 
     # Try our own standard with an uppercase directory first
     # If this script runs on Windows, it'll match any case, but that's fine.

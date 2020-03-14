@@ -327,6 +327,9 @@ def _set_standard_cplusplus_compiler_flags(environment):
         environment.Append(CPPDEFINES=['NDEBUG'])
 
     if platform.system() == 'Windows':
+        environment.Append(CXXFLAGS='/arch:SSE2') # Target CPUs from 2003 and later
+        #environment.Append(CXXFLAGS='/arch:AVX') # Target CPUs from 2011 and later
+
         environment.Append(CFLAGS='/GF') # String pooling in debug and release
         #environment.Append(CFLAGS='/Gv') # Vectorcall for speed
         environment.Append(CFLAGS='/utf-8') # Source code and outputs are UTF-8 encoded
@@ -372,6 +375,15 @@ def _set_standard_cplusplus_compiler_flags(environment):
             environment.Append(CXXFLAGS='/Gw') # Enable whole-program *data* optimization
 
     else:
+        if 'arm' in platform.uname()[4].lower():
+            environment.Append(CXXFLAGS='-march=armv8-a+crc+simd') # Target Raspberry PI 3 CPU
+            environment.Append(CXXFLAGS='-mtune=cortex-a53') # Raspberry PI 3 CPU
+            environment.Append(CXXFLAGS='-mfpu=crypto-neon-fp-armv8') # Raspberry PI 3 CPU
+        else:
+            environment.Append(CXXFLAGS='-march=nocona') # Target CPUs from 2003 and later
+            #environment.Append(CXXFLAGS='-march=bdver1') # Target CPUs from 2011 and later
+            environment.Append(CXXFLAGS='-mtune=generic') # Target CPUs from 2003 and later
+
         environment.Append(CFLAGS='-fvisibility=hidden') # Default visibility: don't export
         environment.Append(CFLAGS='-Wpedantic') # Enable all ISO C++ deviation warnings
         environment.Append(CFLAGS='-Wall') # Show all common warnings
