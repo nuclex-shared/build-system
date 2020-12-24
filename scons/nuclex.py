@@ -344,7 +344,7 @@ def _set_standard_cplusplus_compiler_flags(environment):
         environment.Append(CXXFLAGS='/GS-') # No buffer security checks (we make games!)
         environment.Append(CXXFLAGS='/fp:fast') # Allow floating point optimizations
         environment.Append(CXXFLAGS='/EHsc') # Only C++ exceptions, no Microsoft exceptions
-        environment.Append(CXXFLAGS='/std:c++14') # Use a widely supported but current C++
+        environment.Append(CXXFLAGS='/std:c++17') # Use a widely supported but current C++
         environment.Append(CXXFLAGS='/GR') # Generate RTTI for dynamic_cast and type_info
 
         if _is_debug_build(environment):
@@ -407,7 +407,7 @@ def _set_standard_cplusplus_compiler_flags(environment):
         environment.Append(CXXFLAGS='-funsafe-math-optimizations') # Allow float optimizations
         #environment.Append(CXXFLAGS='-ffunction-sections')
         #environment.Append(CXXFLAGS='-fdata-sections')
-        environment.Append(CXXFLAGS='-std=c++14') # Use a widely supported but current C++
+        environment.Append(CXXFLAGS='-std=c++17') # Use a widely supported but current C++
         environment.Append(CXXFLAGS='-fvisibility-inlines-hidden') # Inline code is also hidden
 
         if _is_debug_build(environment):
