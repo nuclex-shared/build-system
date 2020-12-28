@@ -3,9 +3,9 @@ cmake_minimum_required (VERSION 3.8)
 
 # ----------------------------------------------------------------------------------------------- #
 
-#set(CMAKE_CXX_STANDARD 17)
-#set(CMAKE_CXX_STANDARD_REQUIRED ON)
-#set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -75,42 +75,71 @@ if(CMAKE_COMPILER_IS_MSVC)
 endif()
 
 # GCC flags (matched against GCC 9.3)
-if(CMAKE_COMPILER_IS_GCC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17") # Target a specific, recent standard
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden") # Don't expose by default
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wpedantic") # Enable pedantic warnings
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall") # Enable all warnings
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas") # Don't warn about pragmas
+if(CMAKE_COMPILER_IS_GCC || CMAKE_COMPILER_IS_CLANG)
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -shared-libgcc") # Use shared libgcc
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pic") # Use position-independent code
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funsafe-math-optimizations") # Allow float optimizations
-
+    # C language and build settings
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden") # Don't expose by default
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wpedantic") # Enable pedantic warnings
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall") # Enable all warnings
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas") # Don't warn about pragmas
-
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -shared-libgcc") # Use shared libgcc
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pic") # Use position-independent code
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -funsafe-math-optimizations") # Allow float optimizations
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fmerge-all-constants") # Data deduplication
+
+    # C math routine behavior
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -funsafe-math-optimizations") # Allow optimizations
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-trapping-math") # Don't detect 0-div / overflow
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-signaling-nans") # NaN never causes exceptions
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-errno-math") # Don't set errno for math calls
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-rounding-math") # Blindly assume round-to-nearest
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -freciprocal-math") # Allow x/y to become x * (1/y)
+
+    # C compiler warnings
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall") # Enable all warnings
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra") # Enable even more warnings
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wpedantic") # Enable standard deviation warnings
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas") # Don't warn about pragmas
+
+    # C++ language and build settings
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17") # Target a specific, recent standard
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden") # Don't expose by default
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -shared-libgcc") # Use shared libgcc
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pic") # Use position-independent code
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fmerge-all-constants") # Data deduplication
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden") # Inline code is hidden
+
+    # C++ math routine behavior
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funsafe-math-optimizations") # Allow optimizations
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-trapping-math") # Don't detect 0-div / overflow
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-signaling-nans") # NaN never causes exceptions
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-errno-math") # Don't set errno for math calls
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rounding-math") # Blindly assume round-to-nearest
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -freciprocal-math") # Allow x/y to become x * (1/y)
+
+    # C++ compiler warnings
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall") # Enable all warnings
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra") # Enable even more warnings
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wpedantic") # Enable standard deviation warnings
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas") # Don't warn about pragmas
+
+    # Optimization flags for release builds
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3") # Optimize for speed
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -flto") # Link-time optimization
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fno-stack-protector") # Unprotected
 
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3") # Optimize for speed
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto") # Link-time optimization
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fno-stack-protector") # Unprotected
 
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3") # Optimize for speed
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -flto") # Link-time optimization
-
-    #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Og") # Optimize for debug (nope!)
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g3") # Generate debug information
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ggdb") # Target the GDB debugger
-
-    #set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Og") # Optimize for debug (nope!)
+    # Debugger flags for debug builds
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g3") # Generate debug information
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -ggdb") # Target the GDB debugger
+    #set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Og") # Optimize for debug (nope!)
+    #set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fbounds-checking") # Array bounds check
+
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g3") # Generate debug information
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ggdb") # Target the GDB debugger
+    #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Og") # Optimize for debug (nope!)
+    #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fbounds-checking") # Array bounds check
+
 endif()
-
-
 
 
 #        if 'arm' in platform.uname()[4].lower():
