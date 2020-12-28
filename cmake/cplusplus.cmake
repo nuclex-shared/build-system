@@ -16,28 +16,128 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 #   CMAKE_COMPILER_IS_CLANG  CLang, an alternative to GCC that's become pretty popular
 #   CMAKE_COMPILER_IS_GCC    GNU C/C++ compiler, the standard compiler on Linux systems
 #   CMAKE_COMPILER_IS_MSVC   Microsoft Visual C++, the stndard compiler on Windows systems
+#
+# F*CK! CMake doesn't check the compiler until the first project() directory has run.
+# Dear CMake developers, what is wrong in your heads? Does anything ever work right here?
+#
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
     set(CMAKE_COMPILER_IS_INTEL ON)
+    message(STATUS "Assuming compiler is the Intel C++ compiler")
 elseif(
     (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") OR
     (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
 )
     set(CMAKE_COMPILER_IS_CLANG ON)
+    message(STATUS "Assuming compiler is Clang")
 elseif(
     (CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR
-    CMAKE_COMPILER_IS_GNUCXX
+    CMAKE_COMPILER_IS_GNUCXX OR
+    CMAKE_COMPILER_IS_GNUCC
 )
     set(CMAKE_COMPILER_IS_GCC ON)
+    message(STATUS "Assuming compiler is the GNU compiler (GCC)")
 elseif(MSVC)
     set(CMAKE_COMPILER_IS_MSVC ON)
+    message(STATUS "Assuming compiler is Microsoft Visual C++")
+else()
+    message(WARNING "Unsupported compiler used, flags will not be optimal")
 endif()
 
 # ----------------------------------------------------------------------------------------------- #
+
+# Target architecture
+#
+# Looks like CMake... just forgot this one. Of course. Mature build system and all that.
+#
+# We can get the current system's architecture, but without CMake's support we have no
+# way to detect a cross-compile.
+#
+if(WIN32)
+    if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+        set(CMAKE_TARGET_ARCHITECTURE "x86")
+    else()
+        set(CMAKE_TARGET_ARCHITECTURE "amd64")
+    endif()
+else()
+    EXECUTE_PROCESS(
+        COMMAND uname -m
+        COMMAND tr -d '\n'
+        OUTPUT_VARIABLE architecture
+    )
+    string(FIND ${architecture} "arm" armArchitectureIndex)
+    if(NOT ${armArchitectureIndex} EQUAL -1)
+        set(CMAKE_TARGET_ARCHITECTURE "armhf")
+    elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+        set(CMAKE_TARGET_ARCHITECTURE "x86")
+    else()
+        set(CMAKE_TARGET_ARCHITECTURE "amd64")
+    endif()
+endif()
+
+# ----------------------------------------------------------------------------------------------- #
+
+# Build a compiler tag
+#
+# CMake's design is dumb and assumes you only ever want one build and configuration, to the point
+# of regenerating the entire Makefile to switch between debug and release. For packaging and
+# deployment, we want a short tag that identifies target platform, compiler and architecture.
+#
+# It will look like these examples:
+#   linux-gcc9.3-amd64-release
+#   windows-msvc14.1-amd64-debug
+#   linux-clang11.2-armhf-release
+#
+
+# Target OS
+if(WIN32)
+    set(CMAKE_COMPILER_TAG "windows")
+else()
+    set(CMAKE_COMPILER_TAG "linux")
+endif()
+
+# Compiler name
+if(CMAKE_COMPILER_IS_INTEL)
+    set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-icc")
+elseif(CMAKE_COMPILER_IS_CLANG)
+    set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-clang")
+elseif(CMAKE_COMPILER_IS_GCC)
+    set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-gcc")
+elseif(CMAKE_COMPILER_IS_MSVC)
+    set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-msvc")
+else()
+    set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-unknown")
+endif()
+
+# Compiler version (only major.minor)
+string(FIND ${CMAKE_CXX_COMPILER_VERSION} . firstDotIndex)
+string(SUBSTRING ${CMAKE_CXX_COMPILER_VERSION} 0 ${firstDotIndex} majorVersion)
+math(EXPR firstDotIndex "${firstDotIndex} + 1")
+string(SUBSTRING ${CMAKE_CXX_COMPILER_VERSION} ${firstDotIndex} -1 remainder)
+string(FIND ${remainder} . secondDotIndex)
+string(SUBSTRING ${remainder} 0 ${secondDotIndex} minorVersion)
+set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}${majorVersion}.${minorVersion}")
+
+# Target architecture
+set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-${CMAKE_TARGET_ARCHITECTURE}")
+
+# Debug/Release mode
+if(CMAKE_BUILD_TYPE EQUAL "DEBUG")
+    set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-debug")
+else()
+    set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-release")
+endif()
+
+message(STATUS "System/compiler/platform/mode tag is ${CMAKE_COMPILER_TAG}")
+
+# ----------------------------------------------------------------------------------------------- #
+
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Set up common compiler flags depending on the platform used
 #
 # Visual C++ flags (matched against Visual C++ 2017)
 if(CMAKE_COMPILER_IS_MSVC)
+
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc") # Enable only C++ exceptions
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GF") # String pooling in debug and release
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8") # Source code and outputs are UTF-8
@@ -72,22 +172,40 @@ if(CMAKE_COMPILER_IS_MSVC)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /MDd") # Debug runtime
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od") # No optimization
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Zi") # Debugging information
+
 endif()
 
 # GCC flags (matched against GCC 9.3)
-if(CMAKE_COMPILER_IS_GCC || CMAKE_COMPILER_IS_CLANG)
+if(CMAKE_COMPILER_IS_GCC OR CMAKE_COMPILER_IS_CLANG)
+
+    # Target hardware
+    if(${CMAKE_TARGET_ARCHITECTURE} STREQUAL "armhf")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv8-a+crc+simd") # Raspberry PI 3 CPU
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=cortex-a53") # Raspberry PI 3 CPU
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=crypto-neon-fp-armv8") # Raspberry PI 3 FPU
+
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8-a+crc+simd") # Raspberry PI 3 CPU
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=cortex-a53") # Raspberry PI 3 CPU
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpu=crypto-neon-fp-armv8") # Raspberry PI 3 FPU
+    else()
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=nocona") # Target CPUs from 2003 and later
+        #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=bdver1") # Target CPUs from 2011 and later
+
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=nocona") # Target CPUs from 2003 and later
+        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=bdver1") # Target CPUs from 2011 and later
+    endif()
 
     # C language and build settings
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden") # Don't expose by default
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -shared-libgcc") # Use shared libgcc
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pic") # Use position-independent code
+    #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fpic") # Use position-independent code
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fmerge-all-constants") # Data deduplication
 
     # C math routine behavior
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -funsafe-math-optimizations") # Allow optimizations
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-trapping-math") # Don't detect 0-div / overflow
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-signaling-nans") # NaN never causes exceptions
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-errno-math") # Don't set errno for math calls
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-math-errno") # Don't set errno for math calls
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-rounding-math") # Blindly assume round-to-nearest
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -freciprocal-math") # Allow x/y to become x * (1/y)
 
@@ -101,7 +219,7 @@ if(CMAKE_COMPILER_IS_GCC || CMAKE_COMPILER_IS_CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17") # Target a specific, recent standard
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden") # Don't expose by default
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -shared-libgcc") # Use shared libgcc
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pic") # Use position-independent code
+    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpic") # Use position-independent code
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fmerge-all-constants") # Data deduplication
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden") # Inline code is hidden
 
@@ -109,7 +227,7 @@ if(CMAKE_COMPILER_IS_GCC || CMAKE_COMPILER_IS_CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funsafe-math-optimizations") # Allow optimizations
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-trapping-math") # Don't detect 0-div / overflow
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-signaling-nans") # NaN never causes exceptions
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-errno-math") # Don't set errno for math calls
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-math-errno") # Don't set errno for math calls
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rounding-math") # Blindly assume round-to-nearest
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -freciprocal-math") # Allow x/y to become x * (1/y)
 
@@ -140,14 +258,3 @@ if(CMAKE_COMPILER_IS_GCC || CMAKE_COMPILER_IS_CLANG)
     #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fbounds-checking") # Array bounds check
 
 endif()
-
-
-#        if 'arm' in platform.uname()[4].lower():
-#            environment.Append(CXXFLAGS='-march=armv8-a+crc+simd') # Target Raspberry PI 3 CPU
-#            environment.Append(CXXFLAGS='-mtune=cortex-a53') # Raspberry PI 3 CPU
-#            environment.Append(CXXFLAGS='-mfpu=crypto-neon-fp-armv8') # Raspberry PI 3 CPU
-#        else:
-#            environment.Append(CXXFLAGS='-march=nocona') # Target CPUs from 2003 and later
-#            #environment.Append(CXXFLAGS='-march=bdver1') # Target CPUs from 2011 and later
-#            environment.Append(CXXFLAGS='-mtune=generic') # Target CPUs from 2003 and later
-
