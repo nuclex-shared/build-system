@@ -66,7 +66,11 @@ else()
     )
     string(FIND ${architecture} "arm" armArchitectureIndex)
     if(NOT ${armArchitectureIndex} EQUAL -1)
-        set(CMAKE_TARGET_ARCHITECTURE "armhf")
+        if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+            set(CMAKE_TARGET_ARCHITECTURE "armhf")
+        else()
+            set(CMAKE_TARGET_ARCHITECTURE "arm64")
+        endif()
     elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
         set(CMAKE_TARGET_ARCHITECTURE "x86")
     else()
@@ -115,7 +119,20 @@ math(EXPR firstDotIndex "${firstDotIndex} + 1")
 string(SUBSTRING ${CMAKE_CXX_COMPILER_VERSION} ${firstDotIndex} -1 remainder)
 string(FIND ${remainder} . secondDotIndex)
 string(SUBSTRING ${remainder} 0 ${secondDotIndex} minorVersion)
-set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}${majorVersion}.${minorVersion}")
+
+# From regular compiler versions to a giant steaming mess
+# https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warnings-by-compiler-version?view=msvc-160
+if(majorVersion EQUAL 19)
+    if(minorVersion GREATER_EQUAL 20)
+        set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}14.2") # VS2019
+    elseif(minorVersion GREATER_EQUAL 10)
+        set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}14.1") # VS2017
+    else()
+        set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}14.0") # VS2015
+    endif()
+else()
+    set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}${majorVersion}.${minorVersion}")
+endif()
 
 # Target architecture
 set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-${CMAKE_TARGET_ARCHITECTURE}")
@@ -128,16 +145,26 @@ else()
     set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-release")
 endif()
 
-message(STATUS "System/compiler/platform/mode tag is ${CMAKE_COMPILER_TAG}")
+message(STATUS "Compiler tag for this build is ${CMAKE_COMPILER_TAG}")
 
 # ----------------------------------------------------------------------------------------------- #
 
+# Build code with relative jump addresses, allows dynamic linking (for shared libraries)
+# and allows executabls to work on systems with forcd ASLR.
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Set up common compiler flags depending on the platform used
 #
 # Visual C++ flags (matched against Visual C++ 2017)
-if(CMAKE_COMPILER_IS_MSVC)
+if(CMAKE_COMPILER_IS_MSVC OR CMAKE_COMPILER_IS_INTEL)
+
+    if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:SSE2") # Target CPUs from 2003 and later
+        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX") # Target CPUs from 2011 and later
+    else()
+        # Note that SSE2 is in the AMD64 specification, so all 64-bit CPUs have SSE2
+        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX") # Target CPUs from 2011 and later
+    endif()
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc") # Enable only C++ exceptions
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GF") # String pooling in debug and release
@@ -173,6 +200,9 @@ if(CMAKE_COMPILER_IS_MSVC)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /MDd") # Debug runtime
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od") # No optimization
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Zi") # Debugging information
+
+    set(STATIC_LIBRARY_FLAGS_RELEASE "${STATIC_LIBRARY_FLAGS_RELEASE} /LTCG")
+    set(LINK_FLAGS_RELEASE "${LINK_FLAGS_RELEASE} /LTCG")
 
 endif()
 
