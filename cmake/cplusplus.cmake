@@ -145,6 +145,7 @@ else()
     set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-release")
 endif()
 
+set(NUCLEX_COMPILER_TAG "${CMAKE_COMPILER_TAG}" )
 message(STATUS "Compiler tag for this build is ${CMAKE_COMPILER_TAG}")
 
 # ----------------------------------------------------------------------------------------------- #
@@ -228,14 +229,18 @@ if(CMAKE_COMPILER_IS_GCC OR CMAKE_COMPILER_IS_CLANG)
 
     # C language and build settings
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden") # Don't expose by default
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -shared-libgcc") # Use shared libgcc
+    if(NOT CMAKE_COMPILER_IS_CLANG)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -shared-libgcc") # Use shared libgcc
+    endif()
     #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fpic") # Use position-independent code
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fmerge-all-constants") # Data deduplication
 
     # C math routine behavior
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -funsafe-math-optimizations") # Allow optimizations
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-trapping-math") # Don't detect 0-div / overflow
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-signaling-nans") # NaN never causes exceptions
+    if(NOT CMAKE_COMPILER_IS_CLANG)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-signaling-nans") # NaN never causes exceptions
+    endif()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-math-errno") # Don't set errno for math calls
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-rounding-math") # Blindly assume round-to-nearest
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -freciprocal-math") # Allow x/y to become x * (1/y)
@@ -249,7 +254,9 @@ if(CMAKE_COMPILER_IS_GCC OR CMAKE_COMPILER_IS_CLANG)
     # C++ language and build settings
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17") # Target a specific, recent standard
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden") # Don't expose by default
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -shared-libgcc") # Use shared libgcc
+    if(NOT CMAKE_COMPILER_IS_CLANG)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -shared-libgcc") # Use shared libgcc
+    endif()
     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpic") # Use position-independent code
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fmerge-all-constants") # Data deduplication
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden") # Inline code is hidden
@@ -257,7 +264,9 @@ if(CMAKE_COMPILER_IS_GCC OR CMAKE_COMPILER_IS_CLANG)
     # C++ math routine behavior
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funsafe-math-optimizations") # Allow optimizations
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-trapping-math") # Don't detect 0-div / overflow
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-signaling-nans") # NaN never causes exceptions
+    if(NOT CMAKE_COMPILER_IS_CLANG)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-signaling-nans") # NaN never causes exceptions
+    endif()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-math-errno") # Don't set errno for math calls
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rounding-math") # Blindly assume round-to-nearest
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -freciprocal-math") # Allow x/y to become x * (1/y)
