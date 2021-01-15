@@ -92,61 +92,65 @@ endif()
 #   linux-clang11.2-armhf-release
 #
 
-# Target OS
-if(WIN32)
-    set(CMAKE_COMPILER_TAG "windows")
-else()
-    set(CMAKE_COMPILER_TAG "linux")
-endif()
+if(NOT NUCLEX_COMPILER_TAG)
 
-# Compiler name
-if(CMAKE_COMPILER_IS_INTEL)
-    set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-icc")
-elseif(CMAKE_COMPILER_IS_CLANG)
-    set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-clang")
-elseif(CMAKE_COMPILER_IS_GCC)
-    set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-gcc")
-elseif(CMAKE_COMPILER_IS_MSVC)
-    set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-msvc")
-else()
-    set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-unknown")
-endif()
-
-# Compiler version (only major.minor)
-string(FIND ${CMAKE_CXX_COMPILER_VERSION} . firstDotIndex)
-string(SUBSTRING ${CMAKE_CXX_COMPILER_VERSION} 0 ${firstDotIndex} majorVersion)
-math(EXPR firstDotIndex "${firstDotIndex} + 1")
-string(SUBSTRING ${CMAKE_CXX_COMPILER_VERSION} ${firstDotIndex} -1 remainder)
-string(FIND ${remainder} . secondDotIndex)
-string(SUBSTRING ${remainder} 0 ${secondDotIndex} minorVersion)
-
-# From regular compiler versions to a giant steaming mess
-# https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warnings-by-compiler-version?view=msvc-160
-if(majorVersion EQUAL 19)
-    if(minorVersion GREATER_EQUAL 20)
-        set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}14.2") # VS2019
-    elseif(minorVersion GREATER_EQUAL 10)
-        set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}14.1") # VS2017
+    # Target OS
+    if(WIN32)
+        set(NUCLEX_COMPILER_TAG "windows")
     else()
-        set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}14.0") # VS2015
+        set(NUCLEX_COMPILER_TAG "linux")
     endif()
-else()
-    set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}${majorVersion}.${minorVersion}")
+
+    # Compiler name
+    if(CMAKE_COMPILER_IS_INTEL)
+        set(NUCLEX_COMPILER_TAG "${NUCLEX_COMPILER_TAG}-icc")
+    elseif(CMAKE_COMPILER_IS_CLANG)
+        set(NUCLEX_COMPILER_TAG "${NUCLEX_COMPILER_TAG}-clang")
+    elseif(CMAKE_COMPILER_IS_GCC)
+        set(NUCLEX_COMPILER_TAG "${NUCLEX_COMPILER_TAG}-gcc")
+    elseif(CMAKE_COMPILER_IS_MSVC)
+        set(NUCLEX_COMPILER_TAG "${NUCLEX_COMPILER_TAG}-msvc")
+    else()
+        set(NUCLEX_COMPILER_TAG "${NUCLEX_COMPILER_TAG}-unknown")
+    endif()
+
+    # Compiler version (only major.minor)
+    string(FIND ${CMAKE_CXX_COMPILER_VERSION} . firstDotIndex)
+    string(SUBSTRING ${CMAKE_CXX_COMPILER_VERSION} 0 ${firstDotIndex} majorVersion)
+    math(EXPR firstDotIndex "${firstDotIndex} + 1")
+    string(SUBSTRING ${CMAKE_CXX_COMPILER_VERSION} ${firstDotIndex} -1 remainder)
+    string(FIND ${remainder} . secondDotIndex)
+    string(SUBSTRING ${remainder} 0 ${secondDotIndex} minorVersion)
+
+    # From regular compiler versions to a giant steaming mess
+    # https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warnings-by-compiler-version?view=msvc-160
+    if(majorVersion EQUAL 19)
+        if(minorVersion GREATER_EQUAL 20)
+            set(NUCLEX_COMPILER_TAG "${NUCLEX_COMPILER_TAG}14.2") # VS2019
+        elseif(minorVersion GREATER_EQUAL 10)
+            set(NUCLEX_COMPILER_TAG "${NUCLEX_COMPILER_TAG}14.1") # VS2017
+        else()
+            set(NUCLEX_COMPILER_TAG "${NUCLEX_COMPILER_TAG}14.0") # VS2015
+        endif()
+    else()
+        set(NUCLEX_COMPILER_TAG "${NUCLEX_COMPILER_TAG}${majorVersion}.${minorVersion}")
+    endif()
+
+    # Target architecture
+    set(NUCLEX_COMPILER_TAG "${NUCLEX_COMPILER_TAG}-${CMAKE_TARGET_ARCHITECTURE}")
+
+    # Debug/Release mode
+    string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_LOWERCASE)
+    if(CMAKE_BUILD_TYPE_LOWERCASE STREQUAL "debug")
+        set(NUCLEX_COMPILER_TAG "${NUCLEX_COMPILER_TAG}-debug")
+    else()
+        set(NUCLEX_COMPILER_TAG "${NUCLEX_COMPILER_TAG}-release")
+    endif()
+
+    set(CMAKE_COMPILER_TAG "${NUCLEX_COMPILER_TAG}") # Backwards compatibility with old scripts
+    message(STATUS "Compiler tag for this build is ${NUCLEX_COMPILER_TAG}")
+
 endif()
-
-# Target architecture
-set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-${CMAKE_TARGET_ARCHITECTURE}")
-
-# Debug/Release mode
-string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_LOWERCASE)
-if(CMAKE_BUILD_TYPE_LOWERCASE STREQUAL "debug")
-    set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-debug")
-else()
-    set(CMAKE_COMPILER_TAG "${CMAKE_COMPILER_TAG}-release")
-endif()
-
-set(NUCLEX_COMPILER_TAG "${CMAKE_COMPILER_TAG}" )
-message(STATUS "Compiler tag for this build is ${CMAKE_COMPILER_TAG}")
 
 # ----------------------------------------------------------------------------------------------- #
 
@@ -160,33 +164,38 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 if(CMAKE_COMPILER_IS_MSVC OR CMAKE_COMPILER_IS_INTEL)
 
     if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /arch:SSE2") # Target CPUs from 2003 and later
+        #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /arch:AVX") # Target CPUs from 2011 and later
+
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:SSE2") # Target CPUs from 2003 and later
         #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX") # Target CPUs from 2011 and later
     else()
         # Note that SSE2 is in the AMD64 specification, so all 64-bit CPUs have SSE2
+        #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /arch:AVX") # Target CPUs from 2011 and later
         #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX") # Target CPUs from 2011 and later
     endif()
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc") # Enable only C++ exceptions
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GF") # String pooling in debug and release
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8") # Source code and outputs are UTF-8
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17") # Target a specific, recent standard
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4") # Enable all warnings
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GS-") # No buffer checks (we make games!)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR") # Generate RTTI for dynamic_cast/type_info
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /FS") # PDBs can be written from multiple processes
-
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /GF") # String pooling in debug and release
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /utf-8") # Source code and outputs are UTF-8
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4") # Enable all warnings
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /GS-") # No buffer checks (we make games!)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /FS") # PDBs can be written from multiple processes
 
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD") # DLL runtime
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2") # Optimize for speed
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Gy") # Function-level linking
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /GL") # Whole program optimization
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Gw") # Optimize data across units
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GF") # String pooling in debug and release
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8") # Source code and outputs are UTF-8
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GS-") # No buffer checks (we make games!)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /FS") # PDBs can be written from multiple processes
+
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc") # Enable only C++ exceptions
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17") # Target a specific, recent standard
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR") # Generate RTTI for dynamic_cast/type_info
+
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /MDd") # Debug runtime
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od") # No optimization
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Zi") # Debugging information
+
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd") # Debug runtime
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od") # No optimization
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Zi") # Debugging information
 
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /MD") # DLL runtime
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2") # Optimize for speed
@@ -194,13 +203,11 @@ if(CMAKE_COMPILER_IS_MSVC OR CMAKE_COMPILER_IS_INTEL)
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /GL") # Whole program optimization
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Gw") # Optimize data across units
 
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd") # Debug runtime
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od") # No optimization
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Zi") # Debugging information
-
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /MDd") # Debug runtime
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od") # No optimization
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Zi") # Debugging information
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD") # DLL runtime
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2") # Optimize for speed
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Gy") # Function-level linking
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /GL") # Whole program optimization
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Gw") # Optimize data across units
 
     set(STATIC_LIBRARY_FLAGS_RELEASE "${STATIC_LIBRARY_FLAGS_RELEASE} /LTCG")
     set(LINK_FLAGS_RELEASE "${LINK_FLAGS_RELEASE} /LTCG")
@@ -245,12 +252,6 @@ if(CMAKE_COMPILER_IS_GCC OR CMAKE_COMPILER_IS_CLANG)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-rounding-math") # Blindly assume round-to-nearest
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -freciprocal-math") # Allow x/y to become x * (1/y)
 
-    # C compiler warnings
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall") # Enable all warnings
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra") # Enable even more warnings
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wpedantic") # Enable standard deviation warnings
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas") # Don't warn about pragmas
-
     # C++ language and build settings
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17") # Target a specific, recent standard
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden") # Don't expose by default
@@ -270,12 +271,6 @@ if(CMAKE_COMPILER_IS_GCC OR CMAKE_COMPILER_IS_CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-math-errno") # Don't set errno for math calls
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rounding-math") # Blindly assume round-to-nearest
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -freciprocal-math") # Allow x/y to become x * (1/y)
-
-    # C++ compiler warnings
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall") # Enable all warnings
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra") # Enable even more warnings
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wpedantic") # Enable standard deviation warnings
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas") # Don't warn about pragmas
 
     # Optimization flags for release builds
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3") # Optimize for speed
@@ -297,4 +292,98 @@ if(CMAKE_COMPILER_IS_GCC OR CMAKE_COMPILER_IS_CLANG)
     #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Og") # Optimize for debug (nope!)
     #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fbounds-checking") # Array bounds check
 
+    # CMake has its own mechanism to set a relative rpath and maybe not all libraries
+    # we compile want that. Disabled for now.
+    #set(CMAKE_LINK_FLAGS "${CMAKE_LINK_FLAGS} -Wl,-rpath='\${ORIGIN}'")
+
 endif()
+
+# ----------------------------------------------------------------------------------------------- #
+
+function(enable_target_compiler_warnings target_name)
+
+    if(CMAKE_COMPILER_IS_MSVC OR CMAKE_COMPILER_IS_INTEL)
+
+        target_compile_options(${target_name} PRIVATE /Wall)
+
+        #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /Wall") # Enable all warnings
+        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Wall") # Enable all warnings
+
+    endif()
+
+    if(CMAKE_COMPILER_IS_GCC OR CMAKE_COMPILER_IS_CLANG)
+
+        target_compile_options(${target_name} PRIVATE -Wall) # Enable all warnings
+        target_compile_options(${target_name} PRIVATE -Wextra) # Even more warnings
+        target_compile_options(${target_name} PRIVATE -Wpedantic) # Warn on standard deviations
+        target_compile_options(${target_name} PRIVATE -Wno-unknown-pragmas) # No pragma warnings
+
+        # C compiler warnings
+        #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall") # Enable all warnings
+        #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra") # Enable even more warnings
+        #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wpedantic") # Enable standard deviation warnings
+        #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas") # Don't warn about pragmas
+
+        # C++ compiler warnings
+        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall") # Enable all warnings
+        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra") # Enable even more warnings
+        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wpedantic") # Enable standard deviation warnings
+        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas") # Don't warn about pragmas
+
+    endif()
+
+endfunction()
+
+# ----------------------------------------------------------------------------------------------- #
+
+function(disable_target_compiler_warnings target_name)
+
+    if(CMAKE_COMPILER_IS_MSVC OR CMAKE_COMPILER_IS_INTEL)
+
+        target_compile_options(${target_name} PRIVATE /w)
+
+        #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /w") # Disable all warnings
+        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /w") # Disable all warnings
+
+    endif()
+
+    if(CMAKE_COMPILER_IS_GCC OR CMAKE_COMPILER_IS_CLANG)
+
+        target_compile_options(${target_name} PRIVATE -w)
+
+        #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -w") # Disable all warnings
+        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w") # Disable all warnings
+
+    endif()
+
+endfunction()
+
+# ----------------------------------------------------------------------------------------------- #
+
+function(set_coverage_c_cxx_flags)
+
+    if(CMAKE_COMPILER_IS_GCC)
+
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-instr-generate")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fcoverage-mapping")
+
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-generate")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcoverage-mapping")
+
+    endif()
+
+    if(CMAKE_COMPILER_IS_CLANG)
+
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ftest-coverage")
+
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftest-coverage")
+
+    endif()
+
+endfunction()
+
+# ----------------------------------------------------------------------------------------------- #
