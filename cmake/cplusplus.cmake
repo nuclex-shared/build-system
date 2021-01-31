@@ -349,7 +349,7 @@ function(install_debug_symbols target_name)
 
             install(
                 FILES $<TARGET_PDB_FILE:${target_name}>
-                DESTINATION "bin/${NUCLEX_COMPILER_TAG}/" OPTIONAL
+                DESTINATION "${PROJECT_SOURCE_DIR}/bin/${NUCLEX_COMPILER_TAG}/" OPTIONAL
             )
 
         endif()
