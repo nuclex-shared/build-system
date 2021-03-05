@@ -340,6 +340,9 @@ function(install_debug_symbols target_name)
             string(REPLACE ".lib" "" output_name ${output_name})
             string(APPEND output_name ".pdb")
 
+            # If there is only one target, this is the output path obj/cmake-Debug/Debug/
+            # If there are multiple targets, TARGET_FILE_DIR reports a nonsensical path.
+            # So we're fucked.
             install(
                 FILES "$<TARGET_FILE_DIR:${target_name}>/${output_name}"
                 DESTINATION "${PROJECT_SOURCE_DIR}/bin/${NUCLEX_COMPILER_TAG}/" OPTIONAL
