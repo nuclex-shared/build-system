@@ -169,11 +169,15 @@ if(NOT NUCLEX_COMPILER_TAG)
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=cortex-a53") # Raspberry PI 3 CPU
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpu=crypto-neon-fp-armv8") # Raspberry PI 3 FPU
         else()
-            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=nocona") # Target CPUs from 2003 and later
+            #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=nocona") # Target CPUs from 2003 and later
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=nehalem") # Target CPUs from 2008 and later
             #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=bdver1") # Target CPUs from 2011 and later
+            #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse3") # Enable SSE3 instructions
 
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=nocona") # Target CPUs from 2003 and later
+            #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=nocona") # Target CPUs from 2003 and later
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=nehalem") # Target CPUs from 2008 and later
             #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=bdver1") # Target CPUs from 2011 and later
+            #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse3") # Enable SSE3 instructions
         endif()
 
         # C language and build settings
